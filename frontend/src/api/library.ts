@@ -14,6 +14,8 @@ export type Source = {
   id: number;
   name: string;
   path: string;
+  /** Where the folder is on the host or network, for "Copy location". */
+  host_path: string | null;
   thumbnail_mode: ThumbnailMode;
   enabled: boolean;
   last_scan_finished_at: string | null;
@@ -46,7 +48,12 @@ export type FileItem = {
   volume_mm3: number | null;
   area_mm2: number | null;
   watertight: boolean | null;
+  /** Opens in the 3D viewer. */
   viewable: boolean;
+  /** Opens in the file viewer (images, SVG, PDF, text, video). */
+  inline: boolean;
+  /** The file's location on the host or network, when its source has one set. */
+  host_path: string | null;
 };
 
 export type FileList = { items: FileItem[]; next_cursor: string | null; total?: number };
@@ -102,9 +109,23 @@ export function useCreateSource() {
 export function useUpdateSource() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; name?: string; thumbnail_mode?: ThumbnailMode; enabled?: boolean }) =>
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: number;
+      name?: string;
+      host_path?: string;
+      thumbnail_mode?: ThumbnailMode;
+      enabled?: boolean;
+    }) =>
       api<Source>(`/sources/${id}`, { method: "PATCH", body }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sources"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sources"] });
+      // File listings carry each file's host path.
+      qc.invalidateQueries({ queryKey: ["files"] });
+      qc.invalidateQueries({ queryKey: ["file"] });
+    },
   });
 }
 

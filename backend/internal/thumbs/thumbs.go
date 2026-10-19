@@ -56,8 +56,29 @@ func Generate(path, format string, size int) (Result, error) {
 			}
 		}
 		return renderModel(path, format, size)
-	case "stl", "obj", "ply", "glb":
+	case "stl", "obj", "ply", "glb", "gltf":
 		return renderModel(path, format, size)
+	case "svg":
+		img, err := rasterizeSVG(path, size)
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{Image: img, Origin: OriginImage, ContentType: "image/png"}, nil
+	case "gcode", "fcstd", "lbrn":
+		var img image.Image
+		var err error
+		switch format {
+		case "gcode":
+			img, err = gcodePreview(path)
+		case "fcstd":
+			img, err = freecadPreview(path)
+		default:
+			img, err = lightburnPreview(path)
+		}
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{Image: fit(img, size), Origin: OriginEmbedded, ContentType: "image/png"}, nil
 	case "jpg", "png", "gif", "webp", "bmp":
 		img, err := decodeImage(path)
 		if err != nil {

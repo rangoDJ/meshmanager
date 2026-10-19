@@ -10,8 +10,13 @@ import { ErrorText, Spinner } from "../components/ui";
 import { formatBytes, formatNumber } from "../lib/format";
 import { useDebounced, useStoredState } from "../lib/hooks";
 
-// three.js is large; load the viewer only when a model is opened.
-const ModelViewer = lazy(() => import("../viewer/ModelViewer"));
+// The viewers pull in three.js; load them only when a file is opened.
+const FilePreview = lazy(() => import("../viewer/FilePreview"));
+
+/** Files that open in a viewer rather than only downloading. */
+function previewable(f: Pick<FileItem, "viewable" | "inline" | "format">) {
+  return f.viewable || f.inline || f.format === "gcode";
+}
 
 const kindLabels: Record<string, string> = {
   model: "Models",
@@ -19,6 +24,7 @@ const kindLabels: Record<string, string> = {
   image: "Images",
   document: "Documents",
   laser: "Laser & CNC",
+  gcode: "G-code",
   video: "Videos",
 };
 
@@ -51,11 +57,12 @@ function useFilters() {
   return [filters, update] as const;
 }
 
-/** The open 3D viewer lives in the URL (?view=<id>), so back and reload work. */
+/** The open viewer lives in the URL (?view=<id>), so back and reload work. */
 function useViewerParam() {
   const [params, setParams] = useSearchParams();
   const id = Number(params.get("view")) || null;
-  const set = (next: number | null) =>
+  // Stepping between files replaces the entry, so Back closes the viewer in one press.
+  const set = (next: number | null, stepping = false) =>
     setParams(
       (p) => {
         const n = new URLSearchParams(p);
@@ -63,7 +70,7 @@ function useViewerParam() {
         else n.delete("view");
         return n;
       },
-      { replace: next === null },
+      { replace: next === null || stepping },
     );
   return [id, set] as const;
 }
@@ -259,7 +266,7 @@ export function LibraryPage() {
                 <Tile
                   file={file}
                   onOpen={() => setSelected(file.id)}
-                  onView={file.viewable ? () => setViewing(file.id) : undefined}
+                  onView={previewable(file) ? () => setViewing(file.id) : undefined}
                 />
               )}
             />
@@ -283,7 +290,7 @@ export function LibraryPage() {
             </div>
           }
         >
-          <ModelViewer fileId={viewing} onClose={() => setViewing(null)} />
+          <FilePreview fileId={viewing} onOpen={(id) => setViewing(id, true)} onClose={() => setViewing(null)} />
         </Suspense>
       )}
     </div>
@@ -297,7 +304,7 @@ function Tile({ file, onOpen, onView }: { file: FileItem; onOpen: () => void; on
       onDoubleClick={onView}
       className="group block w-full text-left"
       title={onView ? `${file.rel_path}
-Double-click to open in 3D` : file.rel_path}
+Double-click to open` : file.rel_path}
     >
       <div className="aspect-square overflow-hidden rounded-xl border border-border bg-surface p-2 transition group-hover:border-accent/60 group-focus-visible:ring-2 group-focus-visible:ring-accent">
         <Thumbnail file={file} className="transition group-hover:scale-[1.03]" />

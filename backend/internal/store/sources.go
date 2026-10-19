@@ -11,6 +11,7 @@ type Source struct {
 	ID                 int64      `json:"id"`
 	Name               string     `json:"name"`
 	Path               string     `json:"path"`
+	HostPath           *string    `json:"host_path"`
 	ThumbnailMode      string     `json:"thumbnail_mode"`
 	Enabled            bool       `json:"enabled"`
 	LastScanJobID      *int64     `json:"last_scan_job_id"`
@@ -24,7 +25,7 @@ type Source struct {
 }
 
 const sourceQuery = `
-	SELECT s.id, s.name, s.path, s.thumbnail_mode, s.enabled, s.last_scan_job_id,
+	SELECT s.id, s.name, s.path, s.host_path, s.thumbnail_mode, s.enabled, s.last_scan_job_id,
 	       s.last_scan_finished_at, s.created_at,
 	       coalesce(c.files, 0), coalesce(c.models, 0), coalesce(c.bytes, 0)
 	FROM sources s
@@ -35,7 +36,7 @@ const sourceQuery = `
 
 func scanSource(row pgx.Row) (Source, error) {
 	var s Source
-	err := row.Scan(&s.ID, &s.Name, &s.Path, &s.ThumbnailMode, &s.Enabled, &s.LastScanJobID,
+	err := row.Scan(&s.ID, &s.Name, &s.Path, &s.HostPath, &s.ThumbnailMode, &s.Enabled, &s.LastScanJobID,
 		&s.LastScanFinishedAt, &s.CreatedAt, &s.FileCount, &s.ModelCount, &s.TotalSize)
 	return s, notFound(err)
 }
@@ -103,7 +104,9 @@ func (s *Store) CreateSource(ctx context.Context, name, path, thumbnailMode stri
 }
 
 type SourceUpdate struct {
-	Name          *string
+	Name *string
+	// HostPath "" clears it.
+	HostPath      *string
 	ThumbnailMode *string
 	Enabled       *bool
 }
@@ -113,8 +116,9 @@ func (s *Store) UpdateSource(ctx context.Context, id int64, u SourceUpdate) (Sou
 		UPDATE sources SET
 			name = coalesce($2, name),
 			thumbnail_mode = coalesce($3, thumbnail_mode),
-			enabled = coalesce($4, enabled)
-		WHERE id = $1`, id, u.Name, u.ThumbnailMode, u.Enabled)
+			enabled = coalesce($4, enabled),
+			host_path = CASE WHEN $5::text IS NULL THEN host_path ELSE NULLIF($5, '') END
+		WHERE id = $1`, id, u.Name, u.ThumbnailMode, u.Enabled, u.HostPath)
 	if err != nil {
 		return Source{}, err
 	}

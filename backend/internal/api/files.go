@@ -26,10 +26,18 @@ type fileView struct {
 	ThumbURL *string `json:"thumb_url"`
 	// Viewable is true when the file opens in the 3D viewer.
 	Viewable bool `json:"viewable"`
+	// Inline is true when the file opens in the app's file viewer (images, PDF, text, video).
+	Inline bool `json:"inline"`
+	// HostPath is the file's location on the host, when the source has a host path set.
+	HostPath *string `json:"host_path"`
 }
 
 func toView(it store.FileItem) fileView {
-	v := fileView{FileItem: it, Viewable: formats.CanView(it.Format)}
+	v := fileView{FileItem: it, Viewable: formats.CanView(it.Format), Inline: InlineViewable(it.Format)}
+	if it.SourceHostPath != nil && *it.SourceHostPath != "" {
+		hp := hostPath(*it.SourceHostPath, it.RelPath)
+		v.HostPath = &hp
+	}
 	base := "/api/files/" + strconv.FormatInt(it.ID, 10) + "/thumbnail"
 	// A thumbnail from an older renderer counts as not rendered yet.
 	current := it.ThumbVersion != nil && *it.ThumbVersion == thumbs.Version

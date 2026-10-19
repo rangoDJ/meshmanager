@@ -2,11 +2,15 @@
 
 A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It indexes the folders where your models already live, renders thumbnails, and lets you search, preview and deduplicate them. It never moves or modifies your files.
 
-> **Status: milestone 2.** The library is in place: sources, a background scanner with BLAKE3 hashing, thumbnails, and a searchable grid with a folder tree. On top of that:
+> **Status: milestone 3.** The library is in place: sources, a background scanner with BLAKE3 hashing, thumbnails, and a searchable grid with a folder tree. On top of that:
 >
 > - **3D viewer:** camera presets, orthographic view, wireframe, screenshots, and an info panel with size, volume, a watertight check and an estimated print weight.
 > - **Slicer projects:** Bambu Studio/OrcaSlicer plates and filament colours; PrusaSlicer volumes. Modifier and support parts are hidden.
-> - **ZIP archives:** browsed like folders. Files inside are indexed, hashed, thumbnailed and viewable without extracting.
+> - **Archives:** ZIP, RAR (split sets listed once, from the first part), 7Z and TAR/TGZ are browsed like folders. Files inside are indexed, hashed, thumbnailed and viewable without extracting.
+> - **Companion files:** images (with pixel size, DPI and printed size), SVG, PDF, Markdown and text readmes, and video open in the app; step through a folder with the arrow keys or by swiping.
+> - **G-code layer preview:** step through a sliced print layer by layer, with lines coloured by type (walls, infill, support…), travel moves, layer height, and the slicer's print time and filament.
+> - **More previews:** thumbnails from SVGs, glTF, and the previews slicers, FreeCAD and LightBurn save inside their files.
+> - **Copy location:** give a source its network location (such as `\\nas\downloads`) and any file's real path is one click away.
 >
 > Duplicates come next. See [PLAN.md](PLAN.md).
 
@@ -112,14 +116,16 @@ backend/
   internal/config/     environment configuration
   internal/db/         connection, goose migrations (db/migrations/*.sql), River migrations
   internal/jobs/       River job definitions and workers
-  internal/library/    opens indexed files on disk or inside ZIP archives
+  internal/gcode/      G-code parser for the layer preview
+  internal/imageinfo/  pixel size and DPI from PNG and JPEG headers
+  internal/library/    opens indexed files on disk or inside archives (ZIP, RAR, 7Z, TAR)
   internal/mesh/       model loaders (STL, OBJ, PLY, 3MF incl. slicer data, GLB)
   internal/render/     software rasterizer for thumbnails
   internal/scan/       folder walker, archive lister, BLAKE3 hasher
   internal/settings/   user-editable settings in DATA_DIR/config.json
   internal/store/      SQL queries
   internal/web/        serves the React build embedded in the binary
-frontend/              React + TypeScript + Vite + Tailwind; src/viewer/ is the three.js viewer
+frontend/              React + TypeScript + Vite + Tailwind; src/viewer/ holds the 3D, G-code and file viewers
 Dockerfile             node build → go build → distroless image (amd64 + arm64)
 ```
 

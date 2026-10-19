@@ -16,3 +16,6 @@ backend/internal/web/dist/*
 /backend/meshmanager.exe
 *.test
 coverage.out
+
+# impeccable design-review screenshots
+.impeccable/review/

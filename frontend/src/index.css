@@ -56,3 +56,20 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+:root {
+  color-scheme: light dark;
+  caret-color: var(--accent);
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Vertical layer slider in the G-code preview: bottom layer at the bottom. */
+.layer-rail {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 1.25rem;
+}

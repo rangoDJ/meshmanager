@@ -175,14 +175,11 @@ func (s *Scanner) Scan(ctx context.Context, src store.Source, progress ProgressF
 	return res, err
 }
 
-// archiveFormats are the archive formats whose contents are indexed.
-var archiveFormats = []string{"zip"}
-
 // expandArchives indexes the supported files inside new or changed archives, as if
 // each archive were a folder. Unchanged archives keep their members (see
 // CarryArchiveMembers); archives inside archives are listed but not opened.
 func (s *Scanner) expandArchives(ctx context.Context, src store.Source, gen int64, res *Result, progress ProgressFunc) error {
-	archives, err := s.Store.ArchivesToList(ctx, src.ID, archiveFormats)
+	archives, err := s.Store.ArchivesToList(ctx, src.ID, library.ArchiveFormats)
 	if err != nil {
 		return err
 	}
@@ -191,7 +188,14 @@ func (s *Scanner) expandArchives(ctx context.Context, src store.Source, gen int6
 			return ctx.Err()
 		}
 		progress(0, fmt.Sprintf("Reading archives… %d of %d", i+1, len(archives)))
-		members, err := library.ListZip(filepath.Join(src.Path, filepath.FromSlash(a.RelPath)))
+		if a.Format == "rar" && library.RARPart(a.RelPath) > 1 {
+			// Later parts of a split RAR set: their contents are listed on part 1.
+			if err := s.Store.MarkMembersIndexed(ctx, a.ID); err != nil {
+				return err
+			}
+			continue
+		}
+		members, err := library.ListArchive(filepath.Join(src.Path, filepath.FromSlash(a.RelPath)), a.Format)
 		if err != nil {
 			// Corrupt or encrypted: note it once; it's retried when the file changes.
 			res.WalkErrors++
@@ -292,7 +296,10 @@ func (s *Scanner) hashAll(ctx context.Context, src store.Source, progress Progre
 	for range workers {
 		wg.Go(func() {
 			for t := range targets {
-				loc := library.Location{SourcePath: src.Path, RelPath: t.RelPath, ArchiveRelPath: t.ArchiveRelPath, MemberPath: t.MemberPath}
+				loc := library.Location{
+					SourcePath: src.Path, RelPath: t.RelPath,
+					ArchiveRelPath: t.ArchiveRelPath, ArchiveFormat: t.ArchiveFormat, MemberPath: t.MemberPath,
+				}
 				sum, err := hashFile(ctx, loc)
 				if err == nil {
 					err = s.Store.SetContentHash(ctx, t.ID, sum)

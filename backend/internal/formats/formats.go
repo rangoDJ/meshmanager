@@ -15,6 +15,7 @@ const (
 	Document Kind = "document"
 	Video    Kind = "video"
 	Laser    Kind = "laser"
+	GCode    Kind = "gcode" // sliced print files
 )
 
 type Format struct {
@@ -26,19 +27,20 @@ type Format struct {
 
 var byExt = map[string]Format{
 	// 3D models
-	".stl":  {"stl", Model, true},
-	".3mf":  {"3mf", Model, true},
-	".obj":  {"obj", Model, true},
-	".ply":  {"ply", Model, true},
-	".glb":  {"glb", Model, true},
-	".gltf": {"gltf", Model, false},
-	".fbx":  {"fbx", Model, false},
-	".step": {"step", Model, false},
-	".stp":  {"step", Model, false},
-	".3dm":  {"3dm", Model, false},
-	".f3d":  {"f3d", Model, false},
-	".f3z":  {"f3z", Model, false},
-	".lys":  {"lys", Model, false},
+	".stl":   {"stl", Model, true},
+	".3mf":   {"3mf", Model, true},
+	".obj":   {"obj", Model, true},
+	".ply":   {"ply", Model, true},
+	".glb":   {"glb", Model, true},
+	".gltf":  {"gltf", Model, true},
+	".fbx":   {"fbx", Model, false},
+	".step":  {"step", Model, false},
+	".stp":   {"step", Model, false},
+	".3dm":   {"3dm", Model, false},
+	".f3d":   {"f3d", Model, false},
+	".f3z":   {"f3z", Model, false},
+	".lys":   {"lys", Model, false},
+	".fcstd": {"fcstd", Model, true}, // FreeCAD: saved preview only
 
 	// archives
 	".zip":    {"zip", Archive, false},
@@ -58,7 +60,7 @@ var byExt = map[string]Format{
 	".heic": {"heic", Image, false},
 	".heif": {"heic", Image, false},
 	".avif": {"avif", Image, false},
-	".svg":  {"svg", Image, false},
+	".svg":  {"svg", Image, true},
 
 	// documents
 	".pdf":      {"pdf", Document, false},
@@ -75,10 +77,15 @@ var byExt = map[string]Format{
 	// laser & CNC
 	".xcs":   {"xcs", Laser, false},
 	".xs":    {"xs", Laser, false},
-	".lbrn":  {"lbrn", Laser, false},
-	".lbrn2": {"lbrn", Laser, false},
+	".lbrn":  {"lbrn", Laser, true},
+	".lbrn2": {"lbrn", Laser, true},
 	".dxf":   {"dxf", Laser, false},
 	".dwg":   {"dwg", Laser, false},
+
+	// sliced G-code; slicers embed a preview image
+	".gcode":  {"gcode", GCode, true},
+	".gco":    {"gcode", GCode, true},
+	".bgcode": {"bgcode", GCode, false},
 }
 
 // Detect returns the format for a file name, or false if the library doesn't index it.
@@ -113,7 +120,7 @@ func ThumbnailFormats() []string {
 // CanView reports whether a format opens in the 3D viewer.
 func CanView(format string) bool {
 	switch format {
-	case "stl", "3mf", "obj", "ply", "glb":
+	case "stl", "3mf", "obj", "ply", "glb", "gltf":
 		return true
 	}
 	return false

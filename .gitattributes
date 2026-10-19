@@ -3,3 +3,7 @@
 *.png binary
 *.stl binary
 *.3mf binary
+*.7z binary
+*.rar binary
+*.zip binary
+*.glb binary

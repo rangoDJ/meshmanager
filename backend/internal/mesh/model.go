@@ -123,7 +123,7 @@ func LoadModel(path, format string) (*Model, error) {
 	switch format {
 	case "3mf":
 		m, err = Read3MFModel(path)
-	case "glb":
+	case "glb", "gltf":
 		m, err = ReadGLBModel(path)
 	case "stl", "obj", "ply":
 		var f *os.File

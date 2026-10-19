@@ -108,6 +108,7 @@ func (s *Server) handleListSources(w http.ResponseWriter, r *http.Request) {
 
 type sourceRequest struct {
 	Name          *string `json:"name"`
+	HostPath      *string `json:"host_path"`
 	Path          string  `json:"path"`
 	ThumbnailMode *string `json:"thumbnail_mode"`
 	Enabled       *bool   `json:"enabled"`
@@ -205,8 +206,16 @@ func (s *Server) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Name = &trimmed
 	}
+	if req.HostPath != nil {
+		trimmed := strings.TrimSpace(*req.HostPath)
+		if len(trimmed) > 1024 {
+			writeError(w, http.StatusBadRequest, "host path is too long")
+			return
+		}
+		req.HostPath = &trimmed
+	}
 	src, err := s.store.UpdateSource(r.Context(), id, store.SourceUpdate{
-		Name: req.Name, ThumbnailMode: req.ThumbnailMode, Enabled: req.Enabled,
+		Name: req.Name, HostPath: req.HostPath, ThumbnailMode: req.ThumbnailMode, Enabled: req.Enabled,
 	})
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "source not found")

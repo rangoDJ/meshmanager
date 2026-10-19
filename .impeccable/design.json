@@ -1,0 +1,545 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T19:43:38+00:00",
+  "title": "Design System: MeshManager",
+  "extensions": {
+    "colorMeta": {
+      "indigo-accent": {
+        "role": "primary",
+        "displayName": "Workshop Indigo",
+        "tonalRamp": [
+          "oklch(15% 0.2 277)",
+          "oklch(27% 0.2 277)",
+          "oklch(39% 0.2 277)",
+          "oklch(51% 0.2 277)",
+          "oklch(63% 0.2 277)",
+          "oklch(75% 0.2 277)",
+          "oklch(85% 0.2 277)",
+          "oklch(95% 0.2 277)"
+        ]
+      },
+      "indigo-accent-dark": {
+        "role": "primary",
+        "displayName": "Workshop Indigo (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.2 277)",
+          "oklch(27% 0.2 277)",
+          "oklch(39% 0.2 277)",
+          "oklch(51% 0.2 277)",
+          "oklch(63% 0.2 277)",
+          "oklch(75% 0.2 277)",
+          "oklch(85% 0.2 277)",
+          "oklch(95% 0.2 277)"
+        ]
+      },
+      "accent-ink": {
+        "role": "neutral",
+        "displayName": "Accent Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0 0)",
+          "oklch(27% 0.0 0)",
+          "oklch(39% 0.0 0)",
+          "oklch(51% 0.0 0)",
+          "oklch(63% 0.0 0)",
+          "oklch(75% 0.0 0)",
+          "oklch(85% 0.0 0)",
+          "oklch(95% 0.0 0)"
+        ]
+      },
+      "accent-ink-dark": {
+        "role": "neutral",
+        "displayName": "Accent Ink (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.005 286)",
+          "oklch(27% 0.005 286)",
+          "oklch(39% 0.005 286)",
+          "oklch(51% 0.005 286)",
+          "oklch(63% 0.005 286)",
+          "oklch(75% 0.005 286)",
+          "oklch(85% 0.005 286)",
+          "oklch(95% 0.005 286)"
+        ]
+      },
+      "cool-paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "tonalRamp": [
+          "oklch(15% 0.005 286)",
+          "oklch(27% 0.005 286)",
+          "oklch(39% 0.005 286)",
+          "oklch(51% 0.005 286)",
+          "oklch(63% 0.005 286)",
+          "oklch(75% 0.005 286)",
+          "oklch(85% 0.005 286)",
+          "oklch(95% 0.005 286)"
+        ]
+      },
+      "cool-paper-dark": {
+        "role": "neutral",
+        "displayName": "Cool Paper (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.005 286)",
+          "oklch(27% 0.005 286)",
+          "oklch(39% 0.005 286)",
+          "oklch(51% 0.005 286)",
+          "oklch(63% 0.005 286)",
+          "oklch(75% 0.005 286)",
+          "oklch(85% 0.005 286)",
+          "oklch(95% 0.005 286)"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "tonalRamp": [
+          "oklch(15% 0.0 0)",
+          "oklch(27% 0.0 0)",
+          "oklch(39% 0.0 0)",
+          "oklch(51% 0.0 0)",
+          "oklch(63% 0.0 0)",
+          "oklch(75% 0.0 0)",
+          "oklch(85% 0.0 0)",
+          "oklch(95% 0.0 0)"
+        ]
+      },
+      "sheet-dark": {
+        "role": "neutral",
+        "displayName": "Sheet (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.008 286)",
+          "oklch(27% 0.008 286)",
+          "oklch(39% 0.008 286)",
+          "oklch(51% 0.008 286)",
+          "oklch(63% 0.008 286)",
+          "oklch(75% 0.008 286)",
+          "oklch(85% 0.008 286)",
+          "oklch(95% 0.008 286)"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Well",
+        "tonalRamp": [
+          "oklch(15% 0.005 286)",
+          "oklch(27% 0.005 286)",
+          "oklch(39% 0.005 286)",
+          "oklch(51% 0.005 286)",
+          "oklch(63% 0.005 286)",
+          "oklch(75% 0.005 286)",
+          "oklch(85% 0.005 286)",
+          "oklch(95% 0.005 286)"
+        ]
+      },
+      "well-dark": {
+        "role": "neutral",
+        "displayName": "Well (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.012 286)",
+          "oklch(27% 0.012 286)",
+          "oklch(39% 0.012 286)",
+          "oklch(51% 0.012 286)",
+          "oklch(63% 0.012 286)",
+          "oklch(75% 0.012 286)",
+          "oklch(85% 0.012 286)",
+          "oklch(95% 0.012 286)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "oklch(15% 0.008 286)",
+          "oklch(27% 0.008 286)",
+          "oklch(39% 0.008 286)",
+          "oklch(51% 0.008 286)",
+          "oklch(63% 0.008 286)",
+          "oklch(75% 0.008 286)",
+          "oklch(85% 0.008 286)",
+          "oklch(95% 0.008 286)"
+        ]
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.012 286)",
+          "oklch(27% 0.012 286)",
+          "oklch(39% 0.012 286)",
+          "oklch(51% 0.012 286)",
+          "oklch(63% 0.012 286)",
+          "oklch(75% 0.012 286)",
+          "oklch(85% 0.012 286)",
+          "oklch(95% 0.012 286)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.006 286)",
+          "oklch(27% 0.006 286)",
+          "oklch(39% 0.006 286)",
+          "oklch(51% 0.006 286)",
+          "oklch(63% 0.006 286)",
+          "oklch(75% 0.006 286)",
+          "oklch(85% 0.006 286)",
+          "oklch(95% 0.006 286)"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Ink (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.005 286)",
+          "oklch(27% 0.005 286)",
+          "oklch(39% 0.005 286)",
+          "oklch(51% 0.005 286)",
+          "oklch(63% 0.005 286)",
+          "oklch(75% 0.005 286)",
+          "oklch(85% 0.005 286)",
+          "oklch(95% 0.005 286)"
+        ]
+      },
+      "pencil": {
+        "role": "neutral",
+        "displayName": "Pencil",
+        "tonalRamp": [
+          "oklch(15% 0.015 286)",
+          "oklch(27% 0.015 286)",
+          "oklch(39% 0.015 286)",
+          "oklch(51% 0.015 286)",
+          "oklch(63% 0.015 286)",
+          "oklch(75% 0.015 286)",
+          "oklch(85% 0.015 286)",
+          "oklch(95% 0.015 286)"
+        ]
+      },
+      "pencil-dark": {
+        "role": "neutral",
+        "displayName": "Pencil (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.012 286)",
+          "oklch(27% 0.012 286)",
+          "oklch(39% 0.012 286)",
+          "oklch(51% 0.012 286)",
+          "oklch(63% 0.012 286)",
+          "oklch(75% 0.012 286)",
+          "oklch(85% 0.012 286)",
+          "oklch(95% 0.012 286)"
+        ]
+      },
+      "danger-red": {
+        "role": "status",
+        "displayName": "Danger Red",
+        "tonalRamp": [
+          "oklch(15% 0.2 27)",
+          "oklch(27% 0.2 27)",
+          "oklch(39% 0.2 27)",
+          "oklch(51% 0.2 27)",
+          "oklch(63% 0.2 27)",
+          "oklch(75% 0.2 27)",
+          "oklch(85% 0.2 27)",
+          "oklch(95% 0.2 27)"
+        ]
+      },
+      "danger-red-dark": {
+        "role": "status",
+        "displayName": "Danger Red (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.17 22)",
+          "oklch(27% 0.17 22)",
+          "oklch(39% 0.17 22)",
+          "oklch(51% 0.17 22)",
+          "oklch(63% 0.17 22)",
+          "oklch(75% 0.17 22)",
+          "oklch(85% 0.17 22)",
+          "oklch(95% 0.17 22)"
+        ]
+      },
+      "success-green": {
+        "role": "status",
+        "displayName": "Success Green",
+        "tonalRamp": [
+          "oklch(15% 0.14 150)",
+          "oklch(27% 0.14 150)",
+          "oklch(39% 0.14 150)",
+          "oklch(51% 0.14 150)",
+          "oklch(63% 0.14 150)",
+          "oklch(75% 0.14 150)",
+          "oklch(85% 0.14 150)",
+          "oklch(95% 0.14 150)"
+        ]
+      },
+      "success-green-dark": {
+        "role": "status",
+        "displayName": "Success Green (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.18 150)",
+          "oklch(27% 0.18 150)",
+          "oklch(39% 0.18 150)",
+          "oklch(51% 0.18 150)",
+          "oklch(63% 0.18 150)",
+          "oklch(75% 0.18 150)",
+          "oklch(85% 0.18 150)",
+          "oklch(95% 0.18 150)"
+        ]
+      },
+      "warning-amber": {
+        "role": "status",
+        "displayName": "Warning Amber",
+        "tonalRamp": [
+          "oklch(15% 0.15 55)",
+          "oklch(27% 0.15 55)",
+          "oklch(39% 0.15 55)",
+          "oklch(51% 0.15 55)",
+          "oklch(63% 0.15 55)",
+          "oklch(75% 0.15 55)",
+          "oklch(85% 0.15 55)",
+          "oklch(95% 0.15 55)"
+        ]
+      },
+      "warning-amber-dark": {
+        "role": "status",
+        "displayName": "Warning Amber (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.16 85)",
+          "oklch(27% 0.16 85)",
+          "oklch(39% 0.16 85)",
+          "oklch(51% 0.16 85)",
+          "oklch(63% 0.16 85)",
+          "oklch(75% 0.16 85)",
+          "oklch(85% 0.16 85)",
+          "oklch(95% 0.16 85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles and Markdown h1."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card headings and the viewer info panel file name."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Almost all UI text; 500 weight for labels and buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Metadata, hints, counters, segmented-control text."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Host paths and plain-text files."
+      }
+    },
+    "shadows": [
+      {
+        "name": "overlay",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Dialogs and the file drawer."
+      },
+      {
+        "name": "resting-hint",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Sign-in card only."
+      },
+      {
+        "name": "paper",
+        "value": "0 2px 12px rgb(0 0 0 / 0.25)",
+        "purpose": "White paper behind SVG cut files."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default colour, opacity and background transitions on controls."
+      },
+      {
+        "name": "progress-width",
+        "value": "width 200ms",
+        "purpose": "Viewer loading progress line."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px",
+        "purpose": "Dialogs become centred cards; the drawer becomes 384px."
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Sidebar becomes static; the mobile top bar hides."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Viewer info panel moves to a 320px right column; the G-code rail replaces the bottom bar."
+      },
+      {
+        "name": "pointer-coarse",
+        "value": "(pointer: coarse)",
+        "purpose": "PDFs open in the browser's reader instead of an iframe."
+      }
+    ],
+    "frostedChrome": "border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px)",
+    "selection": "background: color-mix(in oklab, var(--accent) 35%, transparent)",
+    "toolpathFeatureColors": {
+      "Outer wall": "#f59e0b",
+      "Inner wall": "#fcd34d",
+      "Infill": "#ef4444",
+      "Solid infill": "#a855f7",
+      "Top/bottom": "#ec4899",
+      "Bridge": "#3b82f6",
+      "Support": "#22c55e",
+      "Skirt/brim": "#14b8a6",
+      "Overhang": "#0ea5e9",
+      "Other": "#9aa0ab",
+      "Travel": "#7c8cff"
+    },
+    "viewerBackdrops": {
+      "Dark": "#16161b",
+      "Graphite": "#2b2d33",
+      "Studio grey": "#8a8f99",
+      "Light": "#f2f2f5"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action on a screen.",
+      "html": "<button class=\"ds-btn-primary\">Add source</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:8px;padding:8px 14px;font-size:14px;line-height:20px;font-weight:500;background:var(--accent);color:var(--accent-fg);cursor:pointer;transition:opacity .15s}.ds-btn-primary:hover{opacity:.9}.ds-btn-primary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ds-btn-primary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered sheet button for secondary actions.",
+      "html": "<button class=\"ds-btn-secondary\">Rescan</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:14px;line-height:20px;font-weight:500;background:var(--surface);color:var(--fg);cursor:pointer;transition:background .15s}.ds-btn-secondary:hover{background:var(--surface-2)}.ds-btn-secondary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Unframed muted action; fills on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:8px;padding:8px 14px;font-size:14px;line-height:20px;font-weight:500;background:transparent;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}.ds-btn-ghost:hover{background:var(--surface-2);color:var(--fg)}.ds-btn-ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, hint below, indigo ring on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Name</span><input class=\"ds-input\" placeholder=\"Downloads\"><span class=\"ds-field-hint\">Shown in the library sidebar.</span></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:6px;max-width:320px}.ds-field-label{font-size:14px;font-weight:500;color:var(--fg)}.ds-field-hint{font-size:12px;color:var(--muted)}.ds-input{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;background:var(--surface);color:var(--fg);outline:none;transition:border-color .15s,box-shadow .15s}.ds-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 25%,transparent)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat sheet with hairline border and a title row.",
+      "html": "<section class=\"ds-card\"><header class=\"ds-card-head\"><h2>Downloads</h2><button class=\"ds-card-action\">Edit</button></header><p class=\"ds-card-body\">/mnt/downloads · 12,408 files</p></section>",
+      "css": ".ds-card{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:20px;color:var(--fg);max-width:420px}.ds-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.ds-card-head h2{margin:0;font-size:16px;font-weight:600}.ds-card-action{border:0;background:transparent;color:var(--muted);font-size:14px;border-radius:8px;padding:6px 10px;cursor:pointer}.ds-card-action:hover{background:var(--surface-2);color:var(--fg)}.ds-card-action:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ds-card-body{margin:0;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Muted items; active is indigo text on a 10% indigo wash.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\">Dashboard</a><a class=\"ds-nav-item is-active\" href=\"#\">Library</a><a class=\"ds-nav-item\" href=\"#\">Sources</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:224px;padding:8px;background:var(--surface);border-right:1px solid var(--border)}.ds-nav-item{display:flex;align-items:center;gap:12px;border-radius:8px;padding:8px 12px;font-size:14px;color:var(--muted);text-decoration:none;transition:background .15s,color .15s}.ds-nav-item:hover{background:var(--surface-2);color:var(--fg)}.ds-nav-item.is-active{background:color-mix(in oklab,var(--accent) 10%,transparent);color:var(--accent);font-weight:500}.ds-nav-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Viewer Corner",
+      "kind": "custom",
+      "refersTo": "viewer-chrome",
+      "description": "Frosted previous / N of M / next group and close button, top-right of every viewer.",
+      "html": "<div class=\"ds-corner\"><div class=\"ds-corner-group\"><button aria-label=\"Previous\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m15 18-6-6 6-6\"/></svg></button><span>3 of 6</span><button aria-label=\"Next\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m9 18 6-6-6-6\"/></svg></button></div><button class=\"ds-corner-close\" aria-label=\"Close\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></button></div>",
+      "css": ".ds-corner{display:inline-flex;align-items:center;gap:6px;padding:12px;background:var(--surface-2)}.ds-corner-group,.ds-corner-close{display:flex;align-items:center;overflow:hidden;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px)}.ds-corner button{border:0;background:transparent;color:var(--muted);padding:8px;display:grid;place-items:center;cursor:pointer;transition:color .15s}.ds-corner button:hover{color:var(--fg)}.ds-corner button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}.ds-corner span{padding:0 4px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "View Preset Segmented Control",
+      "kind": "chip",
+      "refersTo": "tool-button-active",
+      "description": "Frosted strip of presets; the active one fills indigo; scrolls sideways on narrow screens.",
+      "html": "<div class=\"ds-seg\"><button class=\"is-on\" aria-pressed=\"true\">Iso</button><button>Front</button><button>Back</button><button>Left</button><button>Right</button><button>Top</button><button>Bottom</button></div>",
+      "css": ".ds-seg{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none;font-size:12px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px)}.ds-seg button{flex-shrink:0;border:0;background:transparent;color:var(--muted);padding:6px 10px;cursor:pointer;transition:color .15s}.ds-seg button:hover{color:var(--fg)}.ds-seg button.is-on{background:var(--accent);color:var(--accent-fg)}.ds-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}"
+    },
+    {
+      "name": "Phone Layer Bar",
+      "kind": "custom",
+      "refersTo": "touch-step-button",
+      "description": "Bottom frosted bar with 40px step buttons around the layer slider (G-code preview on phones).",
+      "html": "<div class=\"ds-layerbar\"><p><b>Layer 60</b> of 60 · <b>12.00 mm</b></p><div class=\"ds-layerbar-row\"><button aria-label=\"Play\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M6 3l14 9-14 9z\"/></svg></button><button aria-label=\"Layer down\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m6 9 6 6 6-6\"/></svg></button><input type=\"range\" min=\"1\" max=\"60\" value=\"60\" aria-label=\"Layer\"><button aria-label=\"Layer up\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m18 15-6-6-6 6\"/></svg></button></div></div>",
+      "css": ".ds-layerbar{max-width:400px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px);border-radius:12px;padding:6px 6px 4px;color:var(--fg)}.ds-layerbar p{margin:0;padding:0 6px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums}.ds-layerbar-row{display:flex;align-items:center;gap:4px}.ds-layerbar button{width:40px;height:40px;flex-shrink:0;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}.ds-layerbar button:hover{color:var(--fg)}.ds-layerbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ds-layerbar input{flex:1;min-width:0;accent-color:var(--accent)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Workbench",
+    "overview": "MeshManager is a tool laid out on a clean bench: neutral cool-grey surfaces, hairline borders, one indigo accent, and the file itself (a model, a toolpath, a photo, a readme) as the only thing with colour or weight. The chrome stays small, grey and out of the way until it is touched; the content area gets the room.\n\nThe system is flat and tonal. Depth comes from three neutral steps (page, sheet, well) and 1px hairlines, not shadows. It follows the operating system's light or dark preference, and every surface token has a matched dark value, so both modes are first-class. Density is moderate: 14px body text, compact controls on desktop, and 40px step targets plus sideways-scrolling control strips on phones, because the library is used next to the printer as often as at a desk.\n\nViewers share one frame: a full-screen content area with floating translucent controls in the corners, and an information panel that sits on the right on wide screens and drops below the content as a bottom sheet on phones.",
+    "keyCharacteristics": [
+      "One accent (indigo) for action, selection and progress; everything else is neutral.",
+      "Flat surfaces separated by hairline borders and tonal steps.",
+      "Floating viewer controls on translucent, blurred sheets.",
+      "System UI typeface throughout; tabular figures for every measurement.",
+      "Light and dark follow the OS, token for token."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Indigo is the only chromatic colour in the interface chrome. If a control is not acting, selected, focused or in progress, it is neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Content Owns Colour Rule",
+        "body": "Saturated colour beyond indigo appears only inside the content: the model, the photo, and the G-code toolpath with its line-type legend.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Measure Rule",
+        "body": "Every number that is a measurement or a count (sizes, dpi, layers, grams, durations, positions) uses tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The Format Code Rule",
+        "body": "File format codes are shown uppercase (STL, 3MF, JPG) as data; uppercase is not used for headings or section labels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Thumb Reach Rule",
+        "body": "On phones, repeated stepping controls (layer up/down, play) are 40px square and sit in a bottom bar; the desktop equivalent is a vertical rail with compact 28px buttons.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Page Rule",
+        "body": "Cards, panels and list rows never carry a shadow; if something needs separating, use a hairline or a tonal step.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Frosted Chrome Rule",
+        "body": "Controls that float over content are sheet at 90% opacity with backdrop blur and a hairline border.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** take every colour from the theme tokens so light and dark modes stay matched; the only hard-coded colours belong to the 3D/toolpath canvas, its backdrops and its legend.",
+      "**Do** float controls over content as frosted chrome: sheet at 90%, backdrop blur, hairline border, 8px radius.",
+      "**Do** give phone-only stepping controls 40px square targets, and let overflowing control strips scroll sideways instead of wrapping into a second row of tiny buttons.",
+      "**Do** use tabular figures for measurements and counts, and write units in full plain words where space allows (\"42 min\", \"8.6 g\").",
+      "**Do** move the info panel below the content on phones and to a 320px right column from 1024px."
+    ],
+    "donts": [
+      "**Don't** put shadows on cards, panels or list rows; shadows are for dialogs, the drawer and SVG paper.",
+      "**Don't** introduce a second interface accent; feature colours stay inside the toolpath canvas and its legend.",
+      "**Don't** cover a browser's own PDF toolbar with viewer controls, and don't embed PDFs on coarse pointers."
+    ]
+  }
+}

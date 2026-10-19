@@ -1,6 +1,6 @@
-import { ChevronLeft, Folder, FolderPlus, HardDrive, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
+import { ChevronLeft, Folder, FolderPlus, HardDrive, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import {
   type Source,
   type ThumbnailMode,
@@ -65,9 +65,33 @@ function SourceCard({ source: s }: { source: Source }) {
   const scan = useScanSource();
   const update = useUpdateSource();
   const remove = useDeleteSource();
+  const [params, setParams] = useSearchParams();
   const [confirming, setConfirming] = useState(false);
+  // ?edit=<id> (from a file's "set this source's network location" link) opens the form.
+  const [editing, setEditingState] = useState(() => params.get("edit") === String(s.id));
+  const setEditing = (on: boolean) => {
+    setEditingState(on);
+    if (!on && params.has("edit")) {
+      setParams(
+        (p) => {
+          const n = new URLSearchParams(p);
+          n.delete("edit");
+          return n;
+        },
+        { replace: true },
+      );
+    }
+  };
   const job = s.last_scan;
   const active = job?.state === "queued" || job?.state === "running";
+
+  if (editing) {
+    return (
+      <Card>
+        <EditSource source={s} onDone={() => setEditing(false)} />
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -79,6 +103,11 @@ function SourceCard({ source: s }: { source: Source }) {
           <p className="truncate font-mono text-xs text-muted" title={s.path}>
             {s.path}
           </p>
+          {s.host_path && (
+            <p className="truncate text-xs text-muted" title={s.host_path}>
+              Network location: <span className="font-mono">{s.host_path}</span>
+            </p>
+          )}
           <p className="mt-2 text-sm text-muted">
             <span className="text-fg">{formatNumber(s.model_count)}</span> models ·{" "}
             {formatNumber(s.file_count)} files · {formatBytes(s.total_size)}
@@ -86,6 +115,9 @@ function SourceCard({ source: s }: { source: Source }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" onClick={() => setEditing(true)} aria-label={`Edit ${s.name}`} title="Edit name and location">
+            <Pencil className="size-4" aria-hidden />
+          </Button>
           <select
             value={s.thumbnail_mode}
             onChange={(e) => update.mutate({ id: s.id, thumbnail_mode: e.target.value as ThumbnailMode })}
@@ -151,6 +183,49 @@ function SourceCard({ source: s }: { source: Source }) {
         </Dialog>
       )}
     </Card>
+  );
+}
+
+/** Edits a source in place: its name, and where its folder lives on the network. */
+function EditSource({ source: s, onDone }: { source: Source; onDone: () => void }) {
+  const update = useUpdateSource();
+  const [name, setName] = useState(s.name);
+  const [hostPath, setHostPath] = useState(s.host_path ?? "");
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    update.mutate({ id: s.id, name: name.trim(), host_path: hostPath.trim() }, { onSuccess: onDone });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4" aria-label={`Edit ${s.name}`}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Name" name="name" required value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Field
+          label="Network location"
+          name="host_path"
+          value={hostPath}
+          onChange={(e) => setHostPath(e.target.value)}
+          placeholder="\\nas\downloads"
+          hint="For example \\nas\downloads or /mnt/downloads. Used for Copy location on files; leave empty if you don't need it."
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+        />
+      </div>
+      <p className="text-xs text-muted">
+        Inside MeshManager this folder is <span className="font-mono">{s.path}</span>.
+      </p>
+      <ErrorText>{update.error?.message}</ErrorText>
+      <div className="flex gap-2">
+        <Button type="submit" loading={update.isPending}>
+          Save
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 

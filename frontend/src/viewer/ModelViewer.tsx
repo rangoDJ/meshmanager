@@ -1,42 +1,32 @@
-import {
-  Box,
-  Camera,
-  Download,
-  Eye,
-  EyeOff,
-  Grid3x3,
-  LoaderCircle,
-  Palette,
-  RotateCw,
-  Triangle,
-  X,
-} from "lucide-react";
+import { Box, Camera, Download, Eye, EyeOff, Grid3x3, Palette, RotateCw, Triangle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFile } from "../api/library";
+import { CopyLocation } from "../components/CopyLocation";
 import { formatBytes, formatNumber } from "../lib/format";
 import { useStoredState } from "../lib/hooks";
+import {
+  backgrounds,
+  type FileNavigation,
+  InfoPanel,
+  LoadingContent,
+  ToolButton,
+  useViewerKeys,
+  ViewerCorner,
+  views,
+} from "./chrome";
 import { type Geometry, fetchGeometry, partStats } from "./geometry";
 import { ModelScene, type ViewPreset } from "./scene";
 
-const views: [ViewPreset, string][] = [
-  ["iso", "Iso"],
-  ["front", "Front"],
-  ["back", "Back"],
-  ["left", "Left"],
-  ["right", "Right"],
-  ["top", "Top"],
-  ["bottom", "Bottom"],
-];
-
-const backgrounds: [string, string][] = [
-  ["#16161b", "Dark"],
-  ["#2b2d33", "Graphite"],
-  ["#8a8f99", "Studio grey"],
-  ["#f2f2f5", "Light"],
-];
-
-/** Full-screen 3D viewer for one file. Loaded lazily, as it pulls in three.js. */
-export default function ModelViewer({ fileId, onClose }: { fileId: number; onClose: () => void }) {
+/** Full-screen 3D viewer for one file. */
+export default function ModelViewer({
+  fileId,
+  nav,
+  onClose,
+}: {
+  fileId: number;
+  nav?: FileNavigation;
+  onClose: () => void;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ModelScene | null>(null);
   const { data: file } = useFile(fileId);
@@ -102,11 +92,7 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
   useEffect(() => sceneRef.current?.setBackground(background), [background, geometry]);
   useEffect(() => sceneRef.current?.setOverrideColor(color), [color, geometry]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useViewerKeys(onClose, nav);
 
   const stats = useMemo(() => (geometry ? partStats(geometry) : []), [geometry]);
   const visibleIdx = useMemo(() => {
@@ -138,8 +124,8 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
         <div ref={container} className="absolute inset-0" />
 
         {/* Toolbar */}
-        <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
-          <div className="flex overflow-hidden rounded-lg border border-border bg-surface/90 text-xs backdrop-blur">
+        <div className="pointer-events-none absolute top-3 right-3 left-3 flex flex-wrap items-center gap-1.5 pr-40 *:pointer-events-auto">
+          <div className="flex max-w-full overflow-x-auto rounded-lg border border-border bg-surface/90 text-xs backdrop-blur [scrollbar-width:none]">
             {views.map(([v, label]) => (
               <button
                 key={v}
@@ -147,13 +133,13 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
                   setView(v);
                   sceneRef.current?.setView(v);
                 }}
-                className={`px-2.5 py-1.5 ${view === v ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
+                className={`shrink-0 px-2.5 py-1.5 transition-colors ${view === v ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="flex overflow-hidden rounded-lg border border-border bg-surface/90 backdrop-blur">
+          <div className="flex shrink-0 overflow-hidden rounded-lg border border-border bg-surface/90 backdrop-blur">
             <ToolButton active={ortho} onClick={() => setOrtho(!ortho)} label="Orthographic view">
               <Box className="size-4" />
             </ToolButton>
@@ -202,13 +188,7 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 rounded-lg border border-border bg-surface/90 p-2 text-muted backdrop-blur hover:text-fg"
-          aria-label="Close viewer"
-        >
-          <X className="size-5" />
-        </button>
+        <ViewerCorner nav={nav} onClose={onClose} />
 
         {plates.length > 1 && (
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
@@ -235,13 +215,7 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
                 {error}
               </p>
             ) : (
-              <>
-                <LoaderCircle className="size-8 animate-spin text-muted" />
-                <div className="h-1.5 w-48 overflow-hidden rounded-full bg-surface-2">
-                  <div className="h-full bg-accent transition-all" style={{ width: `${progress * 100}%` }} />
-                </div>
-                <p className="text-xs text-muted">Loading model…</p>
-              </>
+              <LoadingContent progress={progress || undefined} label="Loading model…" />
             )}
           </div>
         )}
@@ -250,7 +224,7 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
         </p>
       </div>
 
-      <aside className="max-h-[42vh] shrink-0 overflow-y-auto border-t border-border bg-surface p-4 lg:max-h-none lg:w-80 lg:border-t-0 lg:border-l">
+      <InfoPanel>
         <h2 className="truncate font-semibold" title={file?.name}>
           {file?.name ?? "…"}
         </h2>
@@ -298,39 +272,18 @@ export default function ModelViewer({ fileId, onClose }: { fileId: number; onClo
           </div>
         )}
 
-        <a
-          href={`/api/files/${fileId}/download`}
-          download={file?.name}
-          className="mt-5 flex items-center justify-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm hover:bg-surface-2"
-        >
-          <Download className="size-4" aria-hidden /> Download {file ? `(${formatBytes(file.size)})` : ""}
-        </a>
-      </aside>
+        <div className="mt-5 space-y-3 text-sm">
+          {file && <CopyLocation file={file} />}
+          <a
+            href={`/api/files/${fileId}/download`}
+            download={file?.name}
+            className="flex items-center justify-center gap-2 rounded-lg border border-border px-3.5 py-2 hover:bg-surface-2"
+          >
+            <Download className="size-4" aria-hidden /> Download {file ? `(${formatBytes(file.size)})` : ""}
+          </a>
+        </div>
+      </InfoPanel>
     </div>
-  );
-}
-
-function ToolButton({
-  active,
-  onClick,
-  label,
-  children,
-}: {
-  active?: boolean;
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      className={`px-2.5 py-1.5 ${active ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
-    >
-      {children}
-    </button>
   );
 }
 

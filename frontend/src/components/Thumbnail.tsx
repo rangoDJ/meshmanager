@@ -1,4 +1,4 @@
-import { Archive, Box, FileText, Film, Image as ImageIcon, Zap } from "lucide-react";
+import { Archive, Box, FileText, Film, Image as ImageIcon, Layers, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FileItem } from "../api/library";
 
@@ -9,6 +9,7 @@ const kindIcons: Record<string, typeof Box> = {
   document: FileText,
   video: Film,
   laser: Zap,
+  gcode: Layers,
 };
 
 export function KindIcon({ kind, className = "" }: { kind: string; className?: string }) {

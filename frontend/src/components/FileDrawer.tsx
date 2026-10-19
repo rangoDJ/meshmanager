@@ -1,9 +1,13 @@
-import { Box, Download, FolderOpen, X } from "lucide-react";
+import { Box, Download, Eye, FolderOpen, Layers, X } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router";
 import { useFile } from "../api/library";
 import { formatBytes, formatDate, formatDims, formatNumber } from "../lib/format";
+import { CopyLocation } from "./CopyLocation";
 import { Thumbnail } from "./Thumbnail";
+
+// Parts 2+ of a split RAR set list nothing themselves; part 1 holds the contents.
+const laterRarPart = /\.part0*([2-9]|[1-9]\d+)\.rar$/i;
 import { Spinner } from "./ui";
 
 const PLA_DENSITY = 1.24; // g/cm³
@@ -19,6 +23,8 @@ export function FileDrawer({
   onView: (id: number) => void;
 }) {
   const { data: f } = useFile(id);
+  const open = f && (f.viewable ? "3d" : f.format === "gcode" ? "gcode" : f.inline ? "file" : null);
+  const browsable = f && f.kind === "archive" && f.archive_id === null && !laterRarPart.test(f.name);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -48,32 +54,34 @@ export function FileDrawer({
         ) : (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
             <button
-              onClick={() => f.viewable && onView(f.id)}
-              disabled={!f.viewable}
-              className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-surface-2 p-3 enabled:cursor-pointer"
-              aria-label={f.viewable ? "Open in 3D viewer" : undefined}
+              onClick={() => open && onView(f.id)}
+              disabled={!open}
+              className="block aspect-square w-full overflow-hidden rounded-xl bg-surface-2 p-3 enabled:cursor-pointer focus-visible:outline-2 focus-visible:outline-accent"
+              aria-label={open ? `Open ${f.name}` : undefined}
             >
               <Thumbnail file={f} />
-              {f.viewable && (
-                <span className="absolute right-2 bottom-2 rounded-md bg-surface/90 px-2 py-1 text-xs opacity-0 transition group-hover:opacity-100">
-                  Open 3D view
-                </span>
-              )}
             </button>
             {f.thumb === "failed" && f.thumb_error && (
               <p className="text-xs text-warning">Preview unavailable: {f.thumb_error}</p>
             )}
 
             <div className="flex gap-2">
-              {f.viewable && (
+              {open && (
                 <button
                   onClick={() => onView(f.id)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
                 >
-                  <Box className="size-4" aria-hidden /> Open 3D view
+                  {open === "3d" ? (
+                    <Box className="size-4" aria-hidden />
+                  ) : open === "gcode" ? (
+                    <Layers className="size-4" aria-hidden />
+                  ) : (
+                    <Eye className="size-4" aria-hidden />
+                  )}
+                  {open === "3d" ? "Open 3D view" : open === "gcode" ? "Preview layers" : "Open"}
                 </button>
               )}
-              {f.kind === "archive" && f.format === "zip" && (
+              {browsable && (
                 <Link
                   to={`/library?source=${f.source_id}&dir=${encodeURIComponent(f.rel_path)}&kind=all`}
                   onClick={onClose}
@@ -86,7 +94,7 @@ export function FileDrawer({
                 href={`/api/files/${f.id}/download`}
                 download={f.name}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium ${
-                  f.viewable || (f.kind === "archive" && f.format === "zip")
+                  open || browsable
                     ? "border border-border hover:bg-surface-2"
                     : "bg-accent text-accent-fg hover:opacity-90"
                 }`}
@@ -97,10 +105,8 @@ export function FileDrawer({
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <Fact label="Location">
-                <span className="break-all">
-                  {f.source_name} / {f.rel_path}
-                </span>
-                {f.archive_id !== null && <span className="block text-xs text-muted">Inside an archive</span>}
+                <CopyLocation file={f} />
+                {f.archive_id !== null && <span className="mt-1 block text-xs text-muted">Inside an archive</span>}
               </Fact>
               <Fact label="Format">
                 <span className="uppercase">{f.format}</span> · {f.kind}

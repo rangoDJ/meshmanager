@@ -140,13 +140,15 @@ type HashTarget struct {
 	Size    int64
 	// Set for archive members: where to read the bytes from.
 	ArchiveRelPath string
+	ArchiveFormat  string
 	MemberPath     string
 }
 
 // UnhashedFiles pages through present files of the given kinds that have no content hash.
 func (s *Store) UnhashedFiles(ctx context.Context, sourceID int64, kinds []string, afterID int64, limit int) ([]HashTarget, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT f.id, f.rel_path, f.size, coalesce(a.rel_path, ''), coalesce(f.member_path, '')
+		SELECT f.id, f.rel_path, f.size, coalesce(a.rel_path, ''), coalesce(a.format, ''),
+		       coalesce(f.member_path, '')
 		FROM files f LEFT JOIN files a ON a.id = f.archive_id
 		WHERE f.source_id = $1 AND f.status = 'present' AND f.content_hash IS NULL
 		  AND f.kind = ANY($2) AND f.id > $3
@@ -156,7 +158,7 @@ func (s *Store) UnhashedFiles(ctx context.Context, sourceID int64, kinds []strin
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (HashTarget, error) {
 		var t HashTarget
-		err := r.Scan(&t.ID, &t.RelPath, &t.Size, &t.ArchiveRelPath, &t.MemberPath)
+		err := r.Scan(&t.ID, &t.RelPath, &t.Size, &t.ArchiveRelPath, &t.ArchiveFormat, &t.MemberPath)
 		return t, err
 	})
 }
@@ -202,6 +204,7 @@ type FileLocation struct {
 	Size           int64
 	Mtime          time.Time
 	ArchiveRelPath string
+	ArchiveFormat  string
 	MemberPath     string
 }
 
@@ -209,12 +212,12 @@ func (s *Store) GetFileLocation(ctx context.Context, id int64) (FileLocation, er
 	var l FileLocation
 	err := s.db.QueryRow(ctx, `
 		SELECT f.id, f.source_id, s.path, f.rel_path, f.name, f.format, f.status, f.size, f.mtime,
-		       coalesce(a.rel_path, ''), coalesce(f.member_path, '')
+		       coalesce(a.rel_path, ''), coalesce(a.format, ''), coalesce(f.member_path, '')
 		FROM files f JOIN sources s ON s.id = f.source_id
 		LEFT JOIN files a ON a.id = f.archive_id
 		WHERE f.id = $1`, id,
 	).Scan(&l.ID, &l.SourceID, &l.SourcePath, &l.RelPath, &l.Name, &l.Format, &l.Status, &l.Size, &l.Mtime,
-		&l.ArchiveRelPath, &l.MemberPath)
+		&l.ArchiveRelPath, &l.ArchiveFormat, &l.MemberPath)
 	return l, notFound(err)
 }
 
@@ -270,27 +273,28 @@ type FileFilter struct {
 }
 
 type FileItem struct {
-	ID           int64       `json:"id"`
-	SourceID     int64       `json:"source_id"`
-	SourceName   string      `json:"source_name"`
-	RelPath      string      `json:"rel_path"`
-	Dir          string      `json:"dir"`
-	Name         string      `json:"name"`
-	Kind         string      `json:"kind"`
-	Format       string      `json:"format"`
-	Size         int64       `json:"size"`
-	Mtime        time.Time   `json:"mtime"`
-	ContentHash  *string     `json:"content_hash"`
-	ArchiveID    *int64      `json:"archive_id"`
-	ThumbStatus  *string     `json:"-"`
-	ThumbAt      *time.Time  `json:"-"`
-	ThumbVersion *int        `json:"-"`
-	ThumbError   *string     `json:"thumb_error,omitempty"`
-	Triangles    *int64      `json:"triangles"`
-	Dimensions   *[3]float64 `json:"dimensions"`
-	VolumeMM3    *float64    `json:"volume_mm3"`
-	AreaMM2      *float64    `json:"area_mm2"`
-	Watertight   *bool       `json:"watertight"`
+	ID             int64       `json:"id"`
+	SourceID       int64       `json:"source_id"`
+	SourceName     string      `json:"source_name"`
+	SourceHostPath *string     `json:"-"`
+	RelPath        string      `json:"rel_path"`
+	Dir            string      `json:"dir"`
+	Name           string      `json:"name"`
+	Kind           string      `json:"kind"`
+	Format         string      `json:"format"`
+	Size           int64       `json:"size"`
+	Mtime          time.Time   `json:"mtime"`
+	ContentHash    *string     `json:"content_hash"`
+	ArchiveID      *int64      `json:"archive_id"`
+	ThumbStatus    *string     `json:"-"`
+	ThumbAt        *time.Time  `json:"-"`
+	ThumbVersion   *int        `json:"-"`
+	ThumbError     *string     `json:"thumb_error,omitempty"`
+	Triangles      *int64      `json:"triangles"`
+	Dimensions     *[3]float64 `json:"dimensions"`
+	VolumeMM3      *float64    `json:"volume_mm3"`
+	AreaMM2        *float64    `json:"area_mm2"`
+	Watertight     *bool       `json:"watertight"`
 }
 
 var ErrBadCursor = errors.New("invalid cursor")
@@ -392,7 +396,7 @@ func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string
 	}
 
 	rows, err := s.db.Query(ctx, `
-		SELECT f.id, f.source_id, s.name, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
+		SELECT f.id, f.source_id, s.name, s.host_path, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
 		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
 		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
 		FROM files f
@@ -431,7 +435,7 @@ func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string
 func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
 	var it FileItem
 	var sx, sy, sz *float64
-	err := r.Scan(&it.ID, &it.SourceID, &it.SourceName, &it.RelPath, &it.Dir, &it.Name, &it.Kind,
+	err := r.Scan(&it.ID, &it.SourceID, &it.SourceName, &it.SourceHostPath, &it.RelPath, &it.Dir, &it.Name, &it.Kind,
 		&it.Format, &it.Size, &it.Mtime, &it.ContentHash, &it.ArchiveID, &it.ThumbStatus, &it.ThumbAt, &it.ThumbError,
 		&it.ThumbVersion, &it.Triangles, &sx, &sy, &sz, &it.VolumeMM3, &it.AreaMM2, &it.Watertight)
 	if sx != nil && sy != nil && sz != nil {
@@ -442,7 +446,7 @@ func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
 
 func (s *Store) GetFile(ctx context.Context, id int64) (FileItem, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT f.id, f.source_id, s.name, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
+		SELECT f.id, f.source_id, s.name, s.host_path, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
 		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
 		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
 		FROM files f

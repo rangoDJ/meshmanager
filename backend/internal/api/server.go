@@ -90,6 +90,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/files/{id}/thumbnail", s.requireAuth(s.handleThumbnail))
 	mux.Handle("GET /api/files/{id}/download", s.requireAuth(s.handleDownload))
 	mux.Handle("GET /api/files/{id}/geometry", s.requireAuth(s.handleGeometry))
+	mux.Handle("GET /api/files/{id}/content", s.requireAuth(s.handleContent))
+	mux.Handle("GET /api/files/{id}/image-info", s.requireAuth(s.handleImageInfo))
+	mux.Handle("GET /api/files/{id}/toolpath", s.requireAuth(s.handleToolpath))
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")

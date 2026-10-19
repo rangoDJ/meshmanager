@@ -216,17 +216,24 @@ meshmanager/
 
 ## 6. Roadmap / milestones
 
+Revised 2026-10-19 after reviewing Meshory's public roadmap (see §8). Milestones 0–2 are done; the rest are reordered and extended.
+
 | # | Milestone | Deliverables | Done when |
 |---|---|---|---|
-| 0 ✅ | **Skeleton** | Repo, Dockerfile, compose, Go API + React shell, Postgres + goose, River worker, single-admin login, CI (lint, test, multi-arch build) | `docker compose up` shows the login page and a health check passes |
+| 0 ✅ | **Skeleton** | Repo, Dockerfile, compose, Go API + React shell, Postgres + goose, River jobs, single-admin login, CI (lint, test, multi-arch build) | `docker compose up` shows the login page and a health check passes |
 | 1 ✅ | **Index and grid (MVP core)** | Sources UI, scanner, BLAKE3 hashing, STL/OBJ/3MF/PLY/GLB analysis, software-rendered thumbnails, lazy/eager modes, virtualized grid, folder tree, format filter, name/path search, download | A 100k-file test library indexes, and scrolling stays smooth |
-| 2 ✅ | **Viewer** | On-demand geometry endpoint, three.js viewer, camera presets, Bambu/Orca plates and colours, PrusaSlicer volumes, info panel (dimensions/volume/weight/watertight), screenshots, ZIP browsing | A Bambu multi-plate 3MF shows the right plates and colors |
-| 3 | **Archives, formats, companion files** | RAR/7Z/TAR, `convert` sidecar (FBX, STEP, HEIC, PDF, video), images/PDF/MD/video viewer, host-path "reveal" | Every format in §2.2 marked MVP/v1 works |
-| 4 | **Duplicates** | Exact, geometry and likely groups, keeper suggestions, review UI, CSV export | A seeded test set produces the expected groups |
-| 5 | **Organize** | Tags, notes, collections, "Not in a collection", photos, print queue with PDF/CSV export, rename/move reconciliation, bulk actions | Tags survive a rename on disk followed by a rescan |
-| 6 | **AI and semantic search** | Provider settings, tagging jobs with cost estimates, embeddings, semantic search | "dragon" finds `untitled(3).stl` when it is a dragon |
-| 7 | **Polish and ops** | Backup/restore with a schedule, slicer URL-scheme buttons, PWA, users/roles, OIDC, API tokens, metrics, viewer measuring tools | Restore on a fresh install brings back all user data |
-| 8 | **Later / stretch** | 3DM, F3D, LYS, laser/CNC previews, share links, 3MF slicer converter, GPU rendering | — |
+| 2 ✅ | **Viewer** | On-demand geometry endpoint, three.js viewer, camera presets, Bambu/Orca plates and colours, PrusaSlicer volumes, info panel (dimensions/volume/weight/watertight), screenshots, ZIP browsing | A Bambu multi-plate 3MF shows the right plates and colours |
+| 3 ✅ | **Archives, companion files, light formats** | RAR (split sets listed once, on the first part), 7Z, TAR/TGZ; viewer for images (pixel size, DPI and printed size), SVG, PDF (browser), TXT/Markdown readmes, video playback; SVG thumbnails; glTF; previews embedded in G-code, FreeCAD `.FCStd` and LightBurn files; **G-code layer preview** (open a sliced file and step through the print layer by layer: toolpaths, travel moves, layer height and time estimates where the slicer saved them); per-source host path with copy-location | Every archive type browses like a folder, every companion file opens in the app, and a sliced G-code file can be stepped through layer by layer |
+| 4 | **Duplicates** | Exact, identical-geometry and likely groups; folder duplicates; "one pack inside another" verdict with what each side would lose; ZIP next to its unpacked folder rolled up; keeper suggestions; source name and modified time per copy; bulk review (ignore or accept many groups in one pass); CSV export | A seeded test set produces the expected groups, including folder and pack-in-pack cases |
+| 5 | **Scanning controls** | Exclude folders (ghost cards, restore), include patterns and file types, cleanup list of folders with no models, pause/resume and enable/disable per source, rescan one folder, rescan from scratch, scan issues list with retry/ignore, offline-source banner | Excluding a folder hides it without touching disk, and a failed archive can be retried from the UI |
+| 6 | **Organize** | Tags with pinned colour dots, multi-tag filter (all/any, minus to exclude), notes, nested and smart collections (auto-filing rules), "Not in a collection", provenance (source URL, designer, licence), custom thumbnails and folder covers, uploaded photos, print queue with lists and per-printer boards plus PDF/CSV export, rename/move reconciliation, bulk actions | Tags survive a rename on disk followed by a rescan |
+| 7 | **Model sets** | A figure that comes as many parts (e.g. thirteen STLs) shows as one card, not thirteen. Sets are suggested when a folder holds a model's parts (shared folder or name stem, a pack's STL folder) and confirmed or dismissed in one click, or built by hand from files anywhere in the library; every part stays a normal file you can open, view in 3D and download from inside the set; a set card shows a cover (chosen part or composite of the parts) and part count; download the whole set as one ZIP; sets work with search, tags, collections and the print queue | A folder with a 13-part figure shows one suggested set card that opens to its 13 parts, each still viewable on its own |
+| 8 | **AI, semantic search and MCP** | Provider settings (OpenAI-compatible, Anthropic, Gemini, Ollama), your own tagging rules in plain words, tagging runs you can pause/stop with a live request and cost log, embeddings and semantic search, an MCP server exposing the library to AI assistants | "dragon" finds `untitled(3).stl` when it is a dragon |
+| 9 | **Polish and ops** | Backup/restore with a schedule, slicer URL-scheme buttons and custom slicers, viewer measuring tools, hover quick look, studio-style thumbnails, light/dark/system theme switch, mm/inch units, help beside each setting, type-to-search, PWA, users/roles, OIDC, API tokens, metrics | Restore on a fresh install brings back all user data |
+| 10 | **Filament inventory** | Spools with material, colour, brand, diameter, remaining and empty-spool weight, and cost; add, edit, weigh in and archive spools; prints marked done in the print queue deduct filament (from the slicer's G-code or 3MF figures, else the weight estimate) from the chosen spool; each model shows whether it's printable with what's on hand (enough of a matching material and colour per filament in multi-colour 3MFs), with a library filter for it; low-stock warnings; optional sync with a Spoolman server instead of MeshManager's own spool list | A 3MF that needs 120 g of red shows as not printable when the red spool has 80 g left, and marking a print as done deducts its filament |
+| 11 | **Move and manage files (opt-in)** | **Move files and folders between folders**: sort a downloads folder from inside MeshManager (drag to a folder in the tree, or "Move to…"), within a source or across sources, and the library follows without a rescan (tags, notes, thumbnails and set membership move with the file); rename files and folders; trash with undo (to a trash folder inside the source); hide single files; trash from the viewer and from duplicate groups. Needs a per-source switch and a read-write mount, so it's off by default | Moving a model from Downloads into a sorted folder moves it on disk and in the library in one step, with its tags kept and no rescan |
+| 12 | **Import from Patreon, Printables & MakerWorld** *(planned for later)* | Browser extension that saves a model into the library as you download it, or brings a whole Patreon release across with its pictures and attachments; creator, licence and source link attached automatically (uses M6 provenance fields); files land in a writable inbox folder (a separate read-write mount, since libraries are read-only) and are indexed right away; the extension authenticates with an API token (M9) | Downloading a model on Printables with the extension installed puts it in the library with its creator, licence and source link |
+| 13 | **Later / stretch** | Heavy formats deferred on 2026-10-19 (STEP, FBX, 3DM, F3D, LYS, HEIC, PDF and video thumbnails), DXF/DWG/xTool previews, 3MF converter and profile library, model versioning, search inside nested archives, share links, translations, GPU rendering | — |
 
 ---
 
@@ -234,7 +241,35 @@ meshmanager/
 - **Thumbnail throughput on CPU:** a software rasterizer takes roughly 0.1–1 s per model, depending on triangle count. Mitigations: lazy mode, embedded previews first, decimating very large meshes before rendering, and multiple worker replicas.
 - **Huge meshes (100 MB+ STLs) in the browser:** decimate to a viewer LOD on the server and offer "load full resolution".
 - **NAS over SMB/NFS:** no inotify, and file reads are slow. Rely on mtime/size polling and throttle I/O concurrency per source.
-- **No Go CAD kernel:** STEP, FBX and 3DM need the optional Python `convert` sidecar (OCP adds hundreds of MB), which keeps the main image small.
-- **RAR:** `nwaples/rardecode` is pure Go and handles RAR4/RAR5 and split sets; very rare edge cases may still need `unrar` in the sidecar.
+- **No Go CAD kernel:** STEP, FBX and 3DM need native tools (OpenCascade, assimp). On 2026-10-19 these were deferred to M13 to keep a single small image; when picked up, the options are bundling them into the image or an optional sidecar.
+- **RAR and 7Z:** `nwaples/rardecode/v2` (RAR4/RAR5, split sets) and `bodgit/sevenzip` are pure Go. Solid archives must be decompressed from the start to reach a member, so opening files deep inside large solid archives is slow.
 - **Slicer URL schemes:** support varies by slicer and version. Plain download must always work.
 - **Decision needed:** single-user or multi-user from day one? (The plan assumes a single admin first, with the schema ready for multiple users.)
+
+---
+
+## 8. Meshory roadmap review (2026-10-19)
+
+Source: [meshory.com/roadmap](https://meshory.com/roadmap): 58 shipped, 8 in progress, 19 planned, plus community votes.
+
+**Already covered here:** visual library and viewer, multi-plate 3MF with colours, viewer colours/views/screenshots, ZIP browsing, PLY and GLB, preview mode setting (lazy/eager), thumbnail sizes, a server deployment (Meshory only plans "Meshory on your home server" with Docker).
+
+**Adopted into the milestones above:**
+
+| From Meshory | Where |
+|---|---|
+| RAR (with split sets), 7Z, TAR/TGZ archives | M3 |
+| Readmes, SVGs and PDFs in the app; video files; images sized for print (DPI, printed size) | M3 |
+| G-code embedded thumbnails and layer preview, FreeCAD files, LightBurn previews | M3 |
+| Folder duplicates, "one pack inside another", archive rollups, source names and modified time in duplicates, faster bulk cleanup | M4 |
+| Exclude folders, include patterns, folders with no models, pause/resume scans, scan issues with retry, offline sources, rescan one folder, rescan from scratch | M5 |
+| Pinned tags, sharper tag search, nested and smart collections, where a model came from (source, designer, licence), custom thumbnails, folder covers, print queue boards | M6 |
+| Model sets (a multi-part figure as one card, suggested from folders or built by hand) | M7 |
+| Your own AI tagging rules, AI runs you can stop and watch, MCP server (community vote) | M8 |
+| Viewer measuring tools, hover quick look, studio thumbnails, light theme, inches, help beside settings, type to search, custom slicers, scheduled backups | M9 |
+| Move files between folders (sort a downloads folder; the library follows without a rescan), rename, trash, hide single files, trash from the preview | M11, opt-in, because MeshManager is read-only by default |
+| Filament inventory (spools, printable with what's on hand) | M10 |
+| Import from Patreon, Printables & MakerWorld (browser extension) | M12 |
+| STEP, FBX, Rhino, Fusion, LYS, HEIC, PDF/video thumbnails, DXF/DWG/xTool, 3MF converter, versioning, nested-archive search | M13 (heavy native tools deferred, to keep one small image) |
+
+**Not applicable to a self-hosted web app:** global shortcut, window title bar, update prompts and automatic updates (Docker images instead), licence seats, Finder tags on Mac, OneDrive placeholder files, database recovery window (Postgres backups instead), drag-out to desktop apps (downloads instead), "one library on several computers" (a server is already shared by every browser).
