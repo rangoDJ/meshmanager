@@ -3,10 +3,12 @@ import { useAuthStatus } from "./api/hooks";
 import { AppShell } from "./components/AppShell";
 import { FullPageMessage, Spinner } from "./components/ui";
 import { DashboardPage } from "./pages/DashboardPage";
+import { LibraryPage } from "./pages/LibraryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SetupPage } from "./pages/SetupPage";
+import { SourcesPage } from "./pages/SourcesPage";
 
 export default function App() {
   return (
@@ -18,16 +20,8 @@ export default function App() {
       <Route element={<AuthGate mode="private" />}>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
-          <Route
-            path="library"
-            element={
-              <PlaceholderPage
-                title="Library"
-                milestone={1}
-                text="Add folders as sources and browse every model as a thumbnail grid."
-              />
-            }
-          />
+          <Route path="library" element={<LibraryPage />} />
+          <Route path="sources" element={<SourcesPage />} />
           <Route
             path="duplicates"
             element={

@@ -19,6 +19,8 @@ import (
 	"time"
 	_ "time/tzdata" // the distroless image has no zoneinfo; TZ still works
 
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 	"golang.org/x/term"
 
 	"github.com/rangoDJ/meshmanager/internal/api"
@@ -26,6 +28,7 @@ import (
 	"github.com/rangoDJ/meshmanager/internal/config"
 	"github.com/rangoDJ/meshmanager/internal/db"
 	"github.com/rangoDJ/meshmanager/internal/jobs"
+	"github.com/rangoDJ/meshmanager/internal/settings"
 	"github.com/rangoDJ/meshmanager/internal/store"
 	"github.com/rangoDJ/meshmanager/internal/version"
 	"github.com/rangoDJ/meshmanager/internal/web"
@@ -35,7 +38,7 @@ const usage = `Usage: meshmanager <command> [flags]
 
 Commands:
   serve           run migrations, then the HTTP API and web UI
-  worker          run background jobs
+  worker          run background jobs only (optional: serve already runs them)
   migrate         apply database migrations and exit
   reset-password  set a new password for a user (-username NAME)
   healthcheck     exit 0 if the local server reports healthy
@@ -98,18 +101,40 @@ func serve(ctx context.Context, cfg config.Config) error {
 	if err := bootstrapAdmin(ctx, cfg, st); err != nil {
 		return err
 	}
-	queue, err := jobs.NewInsertClient(pool)
+	set := settings.NewStore(cfg.DataDir)
+	if err := set.EnsureFile(); err != nil {
+		slog.Warn("cannot write the settings file; make DATA_DIR writable to save settings",
+			"path", set.Path(), "err", err)
+	}
+
+	// By default this process also runs background jobs, so a deployment is just this
+	// container and Postgres. Separate `worker` containers can add capacity.
+	var queue *river.Client[pgx.Tx]
+	if cfg.RunWorker {
+		queue, err = jobs.NewWorkerClient(pool, st, cfg, set, slog.Default())
+	} else {
+		queue, err = jobs.NewInsertClient(pool)
+	}
 	if err != nil {
 		return err
+	}
+	jobsCtx, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	jobsDone := make(chan error, 1)
+	if cfg.RunWorker {
+		go func() { jobsDone <- runJobs(jobsCtx, queue, st, cfg) }()
+	} else {
+		jobsDone <- nil
 	}
 
 	srv := &http.Server{
 		Addr: cfg.ListenAddr,
 		Handler: api.New(api.Deps{
-			Config: cfg,
-			Store:  st,
-			Queue:  queue,
-			Web:    web.Handler(),
+			Config:   cfg,
+			Store:    st,
+			Queue:    queue,
+			Settings: set,
+			Web:      web.Handler(),
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
@@ -123,12 +148,19 @@ func serve(ctx context.Context, cfg config.Config) error {
 	select {
 	case err := <-errc:
 		return err
+	case err := <-jobsDone:
+		return fmt.Errorf("background jobs stopped: %w", err)
 	case <-ctx.Done():
 	}
 	slog.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	err = srv.Shutdown(shutdownCtx)
+	stopJobs()
+	if jobsErr := <-jobsDone; err == nil {
+		err = jobsErr
+	}
+	return err
 }
 
 // bootstrapAdmin creates the admin from ADMIN_USERNAME / ADMIN_PASSWORD on first start.
@@ -163,11 +195,16 @@ func worker(ctx context.Context, cfg config.Config) error {
 	}
 	defer pool.Close()
 	st := store.New(pool)
-
-	client, err := jobs.NewWorkerClient(pool, st, cfg.WorkerConcurrency, slog.Default())
+	client, err := jobs.NewWorkerClient(pool, st, cfg, settings.NewStore(cfg.DataDir), slog.Default())
 	if err != nil {
 		return err
 	}
+	return runJobs(ctx, client, st, cfg)
+}
+
+// runJobs processes background jobs until ctx is cancelled, sending a heartbeat so the
+// dashboard can list running workers.
+func runJobs(ctx context.Context, client *river.Client[pgx.Tx], st *store.Store, cfg config.Config) error {
 	if err := client.Start(ctx); err != nil {
 		return err
 	}
@@ -181,7 +218,7 @@ func worker(ctx context.Context, cfg config.Config) error {
 		Version:   version.Version,
 		StartedAt: time.Now(),
 	}
-	slog.Info("worker started", "id", info.ID, "concurrency", cfg.WorkerConcurrency)
+	slog.Info("background jobs started", "id", info.ID, "concurrency", cfg.WorkerConcurrency)
 
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -197,7 +234,7 @@ func worker(ctx context.Context, cfg config.Config) error {
 		break
 	}
 
-	slog.Info("worker stopping")
+	slog.Info("background jobs stopping")
 	stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := client.Stop(stopCtx); err != nil {

@@ -1,6 +1,7 @@
 import {
   Copy,
   FolderHeart,
+  HardDrive,
   LayoutDashboard,
   Library,
   ListTodo,
@@ -10,12 +11,13 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuthStatus, useLogout } from "../api/hooks";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/library", label: "Library", icon: Library },
+  { to: "/sources", label: "Sources", icon: HardDrive },
   { to: "/duplicates", label: "Duplicates", icon: Copy },
   { to: "/collections", label: "Collections", icon: FolderHeart },
   { to: "/queue", label: "Print queue", icon: ListTodo },
@@ -26,6 +28,8 @@ export function AppShell() {
   const [open, setOpen] = useState(false);
   const { data } = useAuthStatus();
   const logout = useLogout();
+  // The library grid uses the full width; other pages read better narrower.
+  const wide = useLocation().pathname.startsWith("/library");
 
   return (
     <div className="flex min-h-full">
@@ -91,7 +95,7 @@ export function AppShell() {
           </button>
           <span className="font-semibold">MeshManager</span>
         </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">
+        <main className={`mx-auto w-full flex-1 p-4 md:p-6 ${wide ? "" : "max-w-5xl md:p-8"}`}>
           <Outlet />
         </main>
       </div>

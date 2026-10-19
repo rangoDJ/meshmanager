@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -15,34 +16,39 @@ import (
 
 	"github.com/rangoDJ/meshmanager/internal/auth"
 	"github.com/rangoDJ/meshmanager/internal/config"
+	"github.com/rangoDJ/meshmanager/internal/settings"
 	"github.com/rangoDJ/meshmanager/internal/store"
 )
 
 const maxBodyBytes = 1 << 20
 
 type Server struct {
-	cfg     config.Config
-	store   *store.Store
-	queue   *river.Client[pgx.Tx]
-	web     http.Handler
-	limiter *auth.RateLimiter
+	cfg      config.Config
+	store    *store.Store
+	queue    *river.Client[pgx.Tx]
+	settings *settings.Store
+	web      http.Handler
+	limiter  *auth.RateLimiter
 }
 
 type Deps struct {
 	Config config.Config
 	Store  *store.Store
 	Queue  *river.Client[pgx.Tx]
+	// Settings holds the user-editable app settings (DATA_DIR/config.json).
+	Settings *settings.Store
 	// Web serves the frontend; nil disables it.
 	Web http.Handler
 }
 
 func New(d Deps) *Server {
 	return &Server{
-		cfg:     d.Config,
-		store:   d.Store,
-		queue:   d.Queue,
-		web:     d.Web,
-		limiter: auth.NewRateLimiter(10, 5*time.Minute),
+		cfg:      d.Config,
+		store:    d.Store,
+		queue:    d.Queue,
+		settings: d.Settings,
+		web:      d.Web,
+		limiter:  auth.NewRateLimiter(10, 5*time.Minute),
 	}
 }
 
@@ -59,10 +65,26 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/auth/password", s.requireAuth(s.handleChangePassword))
 
 	mux.Handle("GET /api/system", s.requireAuth(s.handleSystem))
+	mux.Handle("GET /api/settings", s.requireAuth(s.handleGetSettings))
+	mux.Handle("PUT /api/settings", s.requireAuth(s.handleSaveSettings))
 
 	mux.Handle("GET /api/jobs", s.requireAuth(s.handleListJobs))
 	mux.Handle("GET /api/jobs/{id}", s.requireAuth(s.handleGetJob))
 	mux.Handle("POST /api/jobs/ping", s.requireAuth(s.handlePingJob))
+
+	mux.Handle("GET /api/fs/dirs", s.requireAuth(s.handleBrowseDirs))
+	mux.Handle("GET /api/sources", s.requireAuth(s.handleListSources))
+	mux.Handle("POST /api/sources", s.requireAuth(s.handleCreateSource))
+	mux.Handle("PATCH /api/sources/{id}", s.requireAuth(s.handleUpdateSource))
+	mux.Handle("DELETE /api/sources/{id}", s.requireAuth(s.handleDeleteSource))
+	mux.Handle("POST /api/sources/{id}/scan", s.requireAuth(s.handleScanSource))
+	mux.Handle("GET /api/sources/{id}/tree", s.requireAuth(s.handleSourceTree))
+
+	mux.Handle("GET /api/files", s.requireAuth(s.handleListFiles))
+	mux.Handle("GET /api/files/facets", s.requireAuth(s.handleFacets))
+	mux.Handle("GET /api/files/{id}", s.requireAuth(s.handleGetFile))
+	mux.Handle("GET /api/files/{id}/thumbnail", s.requireAuth(s.handleThumbnail))
+	mux.Handle("GET /api/files/{id}/download", s.requireAuth(s.handleDownload))
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")
@@ -111,6 +133,10 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func internalError(w http.ResponseWriter, r *http.Request, err error) {
+	if r.Context().Err() != nil && errors.Is(err, context.Canceled) {
+		// The client went away (e.g. a thumbnail tile scrolled out of view); nothing to report.
+		return
+	}
 	slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 	writeError(w, http.StatusInternalServerError, "internal server error")
 }

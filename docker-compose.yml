@@ -12,14 +12,15 @@ x-app: &app
   environment: &env
     DATABASE_URL: postgres://mesh:${POSTGRES_PASSWORD:-mesh}@db:5432/mesh?sslmode=disable
     TZ: ${TZ:-UTC}
-    LOG_LEVEL: ${LOG_LEVEL:-info}
   volumes:
+    # App data: thumbnails and config.json (the settings you change in the web UI).
     - ./data:/data
     # Your model folders, always read-only. Add one line per library:
     # - /mnt/nas/3d-prints:/libraries/nas:ro
     # - /home/me/Downloads:/libraries/downloads:ro
 
 services:
+  # The web UI, the API and the background jobs (scanning, thumbnails) in one container.
   app:
     <<: *app
     command: serve
@@ -36,16 +37,15 @@ services:
       db:
         condition: service_healthy
 
+  # Optional extra job capacity for very large libraries; not needed normally.
+  # Start with: docker compose --profile workers up -d --scale worker=2
   worker:
     <<: *app
+    profiles: [workers]
     command: worker
-    environment:
-      <<: *env
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
     healthcheck:
       disable: true
     depends_on:
-      # The app runs migrations on start; wait for it before taking jobs.
       app:
         condition: service_healthy
 

@@ -2,12 +2,13 @@
 
 A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It indexes the folders where your models already live, renders thumbnails, and lets you search, preview and deduplicate them. It never moves or modifies your files.
 
-> **Status: milestone 0.** The skeleton is in place: the Go API, Postgres with migrations, the background worker, the React shell and single-admin login. Library features come next. See [PLAN.md](PLAN.md).
+> **Status: milestone 1.** Sources, the background scanner with BLAKE3 hashing, thumbnails (STL, OBJ, PLY, 3MF, GLB and images; slicer previews embedded in 3MF files are used first), and a searchable, virtualized library grid with a folder tree. The 3D viewer comes next. See [PLAN.md](PLAN.md).
 
 ## Run with Docker
 
 ```bash
 cp .env.example .env        # optional: set POSTGRES_PASSWORD, PUID/PGID, PORT
+mkdir -p data               # so the folder is owned by you, not root
 docker compose up -d --build
 ```
 
@@ -23,25 +24,36 @@ Mount your model folders read-only in `docker-compose.yml`, under the `x-app` vo
 
 | Service | What it does |
 |---|---|
-| `app` | `meshmanager serve`: runs migrations, serves the API and the embedded web UI on :8080 |
-| `worker` | `meshmanager worker`: runs background jobs (scanning, thumbnails, …) from the River queue in Postgres. Scale with `docker compose up -d --scale worker=3`. |
-| `db` | PostgreSQL 16 with pgvector |
+| `app` | `meshmanager serve`: runs migrations, serves the API and web UI on :8080, and runs the background jobs (scanning, hashing, thumbnails) |
+| `db` | PostgreSQL 16 with pgvector; also holds the job queue ([River](https://riverqueue.com)), so there's no Redis |
+| `worker` | Optional, off by default. Extra job capacity for very large libraries: `docker compose --profile workers up -d --scale worker=2` |
 
-No Redis: the job queue ([River](https://riverqueue.com)) lives in Postgres.
+### Settings
 
-### Configuration
+Library behaviour is configured in the web UI under **Settings → Library** and saved to `data/config.json`. Changes apply right away, with no restart. You can also edit the file by hand. Missing keys use the defaults, and an invalid file is ignored in favour of the last good values.
+
+| Setting | Default | |
+|---|---|---|
+| `thumb_size` | `384` | thumbnail edge length in pixels (128–1024); applies to new thumbnails |
+| `scan_interval_hours` | `12` | rescan every enabled source this often; `0` = only when you click **Scan now** |
+| `hash_concurrency` | `4` | files hashed in parallel during a scan; lower it for slow NAS drives |
+| `index_videos` | `false` | also index video files |
+
+### Environment variables (deployment only)
 
 | Variable | Default | |
 |---|---|---|
 | `DATABASE_URL` | `postgres://mesh:mesh@db:5432/mesh?sslmode=disable` | |
 | `LISTEN_ADDR` | `:8080` | |
-| `DATA_DIR` | `/data` | thumbnails, caches, backups (later milestones) |
+| `DATA_DIR` | `/data` | `config.json`, thumbnails (`thumbs/<source>/…`), later caches and backups |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | unset | create the admin on first start |
 | `SESSION_TTL_DAYS` | `30` | how long a sign-in lasts |
 | `TRUST_PROXY` | `false` | trust `X-Forwarded-For`/`-Proto`; enable only behind a reverse proxy |
 | `COOKIE_SECURE` | `auto` | `auto` sets the cookie's Secure flag when the request came in over HTTPS; or `true`/`false` |
-| `WORKER_CONCURRENCY` | `4` | parallel jobs per worker |
+| `WORKER_CONCURRENCY` | `4` | parallel background jobs (mostly thumbnail rendering) per container |
+| `RUN_WORKER` | `true` | set `false` on `app` only if dedicated `worker` containers should do all job work |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `LIBRARY_ROOT` | `/libraries` | sources must be folders under this path (where library volumes are mounted) |
 
 ### Reverse proxy
 
@@ -67,11 +79,10 @@ Requirements: Go 1.27+, Node 24+, and Docker (only for Postgres).
 # 1. Postgres on localhost:5432
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
 
-# 2. API (terminal 1) and worker (terminal 2)
+# 2. API and background jobs
 cd backend
-export DATABASE_URL="postgres://mesh:mesh@localhost:5432/mesh?sslmode=disable" DATA_DIR=./.data
+export DATABASE_URL="postgres://mesh:mesh@localhost:5432/mesh?sslmode=disable" DATA_DIR=./.data LIBRARY_ROOT=/path/to/your/models
 go run ./cmd/meshmanager serve
-go run ./cmd/meshmanager worker
 
 # 3. Frontend with hot reload on http://localhost:5173 (proxies /api to :8080)
 cd frontend && npm install && npm run dev
@@ -95,6 +106,7 @@ backend/
   internal/config/     environment configuration
   internal/db/         connection, goose migrations (db/migrations/*.sql), River migrations
   internal/jobs/       River job definitions and workers
+  internal/settings/   user-editable settings in DATA_DIR/config.json
   internal/store/      SQL queries
   internal/web/        serves the React build embedded in the binary
 frontend/              React + TypeScript + Vite + Tailwind

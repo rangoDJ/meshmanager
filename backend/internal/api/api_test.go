@@ -25,6 +25,7 @@ import (
 	"github.com/rangoDJ/meshmanager/internal/config"
 	"github.com/rangoDJ/meshmanager/internal/db"
 	"github.com/rangoDJ/meshmanager/internal/jobs"
+	"github.com/rangoDJ/meshmanager/internal/settings"
 	"github.com/rangoDJ/meshmanager/internal/store"
 )
 
@@ -139,10 +140,25 @@ func (c *client) doHeaders(method, path string, body any, headers map[string]str
 	return resp.StatusCode, out
 }
 
+func testConfig(t *testing.T) config.Config {
+	return config.Config{
+		SessionTTL:        time.Hour,
+		CookieSecure:      "auto",
+		LibraryRoot:       t.TempDir(),
+		DataDir:           t.TempDir(),
+		WorkerConcurrency: 2,
+	}
+}
+
 func newServer(t *testing.T) (string, *store.Store) {
 	t.Helper()
+	return newServerWithConfig(t, testConfig(t))
+}
+
+func newServerWithConfig(t *testing.T, cfg config.Config) (string, *store.Store) {
+	t.Helper()
 	_, err := testPool.Exec(context.Background(),
-		"TRUNCATE users, auth_sessions, jobs, workers, settings, river_job RESTART IDENTITY CASCADE")
+		"TRUNCATE users, auth_sessions, jobs, workers, sources, river_job RESTART IDENTITY CASCADE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,10 +167,29 @@ func newServer(t *testing.T) (string, *store.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{SessionTTL: time.Hour, CookieSecure: "auto"}
-	srv := httptest.NewServer(api.New(api.Deps{Config: cfg, Store: st, Queue: queue}).Handler())
+	srv := httptest.NewServer(api.New(api.Deps{
+		Config: cfg, Store: st, Queue: queue, Settings: settings.NewStore(cfg.DataDir),
+	}).Handler())
 	t.Cleanup(srv.Close)
 	return srv.URL, st
+}
+
+// startWorker runs a River worker for the duration of the test.
+func startWorker(t *testing.T, st *store.Store, cfg config.Config) {
+	t.Helper()
+	worker, err := jobs.NewWorkerClient(testPool, st, cfg, settings.NewStore(cfg.DataDir),
+		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := worker.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cancel()
+		_ = worker.Stop(context.Background())
+	})
 }
 
 func setupAdmin(t *testing.T, c *client) {
@@ -317,18 +352,7 @@ func TestPingJobRunsOnWorker(t *testing.T) {
 	c := newClient(t, base)
 	setupAdmin(t, c)
 
-	worker, err := jobs.NewWorkerClient(testPool, st, 2, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	if err := worker.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		cancel()
-		_ = worker.Stop(context.Background())
-	})
+	startWorker(t, st, testConfig(t))
 
 	status, job := c.do("POST", "/api/jobs/ping", nil)
 	if status != 202 || job["state"] != "queued" {

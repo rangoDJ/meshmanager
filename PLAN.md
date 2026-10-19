@@ -112,8 +112,8 @@ Meshory is a desktop app, so some features need a web equivalent:
                 └───────────────────────────┬────────────────────────────────┘
                                             │ HTTPS (behind your reverse proxy)
 ┌──────────────────────── docker compose ───┴─────────────────────────────────┐
-│  app      Go binary `serve`: REST API + embedded frontend + file streaming    │
-│  worker   same image `worker`, N replicas: scan · hash · thumbnail · geometry │
+│  app      Go binary `serve`: REST API + embedded frontend + background jobs  │
+│  (worker) optional extra job containers (`worker`) for very large libraries   │
 │  db       PostgreSQL 16 + pgvector + pg_trgm; also holds the River job queue  │
 │  (convert) optional sidecar for STEP/FBX/3DM/HEIC/PDF/video conversions       │
 │  (ollama) optional, for local AI tagging/embeddings                           │
@@ -131,7 +131,7 @@ Meshory is a desktop app, so some features need a web equivalent:
 | Database | **PostgreSQL 16** with `pg_trgm` and `pgvector` | One database covers relational data, fuzzy search, vector search and the queue |
 | Auth | argon2id passwords, random session tokens (only their SHA-256 is stored) in an HttpOnly cookie, CSRF header guard, login rate limiting | |
 | Mesh loading (Go) | Own parsers for STL (ASCII and binary), OBJ, PLY; `qmuntal/gltf` for GLB/glTF; 3MF via `archive/zip` + `encoding/xml` (including Bambu `model_settings.config` plates and filament colors) | Covers the common formats with no cgo |
-| Thumbnail rendering | **`fogleman/fauxgl`**, a pure-Go software rasterizer (CPU, headless); embedded previews used first when present (3MF `Metadata/plate_*.png`, F3D, DWG, LightBurn) | Static binary, no GPU or OpenGL needed |
+| Thumbnail rendering | Own pure-Go software rasterizer (`internal/render`: orthographic z-buffer, two-sided Lambert, 2× supersampling) working directly on the flat triangle array, about 36 bytes per triangle; 1M triangles in roughly 150 ms per core; embedded previews used first when present (3MF `Metadata/plate_*.png`, F3D, DWG, LightBurn) | Static binary, no GPU or OpenGL needed |
 | Heavy formats | Optional **`convert` sidecar** (Python: OCP for STEP, assimp for FBX, rhino3dm, libheif, PyMuPDF, ffmpeg) behind a small HTTP API that returns GLB or PNG | Keeps the main image small; enable only if you need these formats |
 | Archives | stdlib `archive/zip`, `archive/tar`, `compress/gzip`; `bodgit/sevenzip`; `nwaples/rardecode` (pure Go, multi-volume) | Reads entries in place; members are extracted to `/data/cache` only on demand |
 | Images | stdlib + `golang.org/x/image` (PNG/JPG/GIF/WEBP/BMP); HEIC/AVIF/PDF/video through the sidecar | |
@@ -176,8 +176,9 @@ Geometry hash: load the mesh, merge vertices, quantize to 1e-4 mm, sort each tri
 
 ## 4. Deployment
 
-See [`docker-compose.yml`](docker-compose.yml) and the [README](README.md). It defines three services: `app` (`serve`), `worker` (`worker`, scalable) and `db` (pgvector/pg16).
-- Runs as a non-root user (`PUID`/`PGID`) in a distroless image; `app` runs migrations on start, and `worker` waits for `app` to be healthy.
+See [`docker-compose.yml`](docker-compose.yml) and the [README](README.md). By default it runs two services: `app` (`serve`: web UI, API and background jobs in one process) and `db` (pgvector/pg16). An optional `worker` profile adds extra job containers.
+- App settings (thumbnail size, rescan interval, hashing parallelism, video indexing) are edited in the UI and stored in `DATA_DIR/config.json`; environment variables cover deployment only.
+- Runs as a non-root user (`PUID`/`PGID`) in a distroless image; `app` runs migrations on start.
 - Library folders are mounted `:ro` under `/libraries/*`.
 - Put it behind Caddy, Traefik or Nginx Proxy Manager for TLS (`TRUST_PROXY=true`). Optional `convert` and `ollama` services come later as compose profiles.
 
@@ -196,9 +197,11 @@ meshmanager/
 │     ├─ jobs/                 # River job args + workers                ✅ M0 (ping, session cleanup)
 │     ├─ store/                # SQL queries                             ✅ M0
 │     ├─ web/                  # embedded frontend                       ✅ M0
-│     ├─ scan/                 # walker, hasher, reconcile               M1
-│     ├─ formats/              # one package per format: detect, analyze, to GLB, embedded preview
-│     ├─ render/               # fauxgl thumbnailer
+│     ├─ scan/                 # walker, BLAKE3 hasher                    ✅ M1
+│     ├─ formats/              # extension → kind/format table            ✅ M1
+│     ├─ mesh/                 # STL/OBJ/PLY/3MF/GLB loaders + stats      ✅ M1
+│     ├─ thumbs/               # thumbnail generation (render, embedded, images) ✅ M1
+│     ├─ render/               # software rasterizer for thumbnails  ✅ M1
 │     ├─ archives/             # zip/tar/7z/rar readers, member cache
 │     ├─ dedupe/               # geometry hash, shape descriptors, keeper rules
 │     └─ ai/                   # provider adapters
@@ -216,7 +219,7 @@ meshmanager/
 | # | Milestone | Deliverables | Done when |
 |---|---|---|---|
 | 0 ✅ | **Skeleton** | Repo, Dockerfile, compose, Go API + React shell, Postgres + goose, River worker, single-admin login, CI (lint, test, multi-arch build) | `docker compose up` shows the login page and a health check passes |
-| 1 | **Index and grid (MVP core)** | Sources UI, scanner, BLAKE3 hashing, STL/OBJ/3MF/PLY/GLB analysis, fauxgl thumbnails, lazy/eager modes, virtualized grid, folder tree, format filter, name/path search, download | A 100k-file test library indexes, and scrolling stays smooth |
+| 1 ✅ | **Index and grid (MVP core)** | Sources UI, scanner, BLAKE3 hashing, STL/OBJ/3MF/PLY/GLB analysis, software-rendered thumbnails, lazy/eager modes, virtualized grid, folder tree, format filter, name/path search, download | A 100k-file test library indexes, and scrolling stays smooth |
 | 2 | **Viewer** | GLB conversion cache, three.js viewer, camera presets, Bambu multi-plate and colors, info panel (dimensions/volume/weight), screenshots, ZIP browsing | A Bambu multi-plate 3MF shows the right plates and colors |
 | 3 | **Archives, formats, companion files** | RAR/7Z/TAR, `convert` sidecar (FBX, STEP, HEIC, PDF, video), images/PDF/MD/video viewer, host-path "reveal" | Every format in §2.2 marked MVP/v1 works |
 | 4 | **Duplicates** | Exact, geometry and likely groups, keeper suggestions, review UI, CSV export | A seeded test set produces the expected groups |

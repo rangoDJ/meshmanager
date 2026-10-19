@@ -24,9 +24,19 @@ type Config struct {
 	// Trust X-Forwarded-For / X-Forwarded-Proto. Only enable behind a reverse proxy.
 	TrustProxy bool
 
+	// Parallel background jobs (mostly thumbnail rendering) per process.
 	WorkerConcurrency int
-	LogLevel          slog.Level
+	// Run background jobs inside `serve`. Turn off only when running separate
+	// `worker` containers.
+	RunWorker bool
+	LogLevel  slog.Level
+
+	// Sources must live under this directory (where library volumes are mounted).
+	LibraryRoot string
 }
+
+// App settings that users change at runtime (hash concurrency, rescan interval,
+// thumbnail size, …) are not here: they live in DATA_DIR/config.json, see package settings.
 
 func Load() (Config, error) {
 	c := Config{
@@ -36,6 +46,7 @@ func Load() (Config, error) {
 		AdminUsername: os.Getenv("ADMIN_USERNAME"),
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		CookieSecure:  strings.ToLower(env("COOKIE_SECURE", "auto")),
+		LibraryRoot:   env("LIBRARY_ROOT", "/libraries"),
 	}
 
 	ttlDays, err := intEnv("SESSION_TTL_DAYS", 30)
@@ -48,6 +59,9 @@ func Load() (Config, error) {
 		return c, err
 	}
 	if c.TrustProxy, err = boolEnv("TRUST_PROXY", false); err != nil {
+		return c, err
+	}
+	if c.RunWorker, err = boolEnv("RUN_WORKER", true); err != nil {
 		return c, err
 	}
 	if err := c.LogLevel.UnmarshalText([]byte(env("LOG_LEVEL", "info"))); err != nil {
