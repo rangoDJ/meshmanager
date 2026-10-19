@@ -1,0 +1,65 @@
+name: meshmanager
+
+x-app: &app
+  image: ${MM_IMAGE:-meshmanager:local}
+  build:
+    context: .
+    args:
+      VERSION: ${MM_VERSION:-dev}
+  restart: unless-stopped
+  # Run as your host user so files in ./data stay yours.
+  user: "${PUID:-1000}:${PGID:-1000}"
+  environment: &env
+    DATABASE_URL: postgres://mesh:${POSTGRES_PASSWORD:-mesh}@db:5432/mesh?sslmode=disable
+    TZ: ${TZ:-UTC}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+  volumes:
+    - ./data:/data
+    # Your model folders, always read-only. Add one line per library:
+    # - /mnt/nas/3d-prints:/libraries/nas:ro
+    # - /home/me/Downloads:/libraries/downloads:ro
+
+services:
+  app:
+    <<: *app
+    command: serve
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      <<: *env
+      # Set to true when running behind Caddy/Traefik/NPM so client IPs and HTTPS are detected.
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      # Optional: create the admin on first start instead of using the setup page.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: worker
+    environment:
+      <<: *env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    healthcheck:
+      disable: true
+    depends_on:
+      # The app runs migrations on start; wait for it before taking jobs.
+      app:
+        condition: service_healthy
+
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mesh
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mesh}
+      POSTGRES_DB: mesh
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mesh -d mesh"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

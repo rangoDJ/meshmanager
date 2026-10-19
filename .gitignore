@@ -1,0 +1,18 @@
+# runtime data
+/data/
+/postgres/
+.env
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# frontend build copied into the Go binary
+backend/internal/web/dist/*
+!backend/internal/web/dist/.gitkeep
+
+# go
+/backend/meshmanager
+/backend/meshmanager.exe
+*.test
+coverage.out

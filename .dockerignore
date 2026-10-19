@@ -1,0 +1,9 @@
+.git
+.github
+.env
+data
+postgres
+**/node_modules
+frontend/dist
+backend/internal/web/dist
+*.md
