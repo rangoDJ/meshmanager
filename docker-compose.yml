@@ -7,11 +7,12 @@ x-app: &app
     args:
       VERSION: ${MM_VERSION:-dev}
   restart: unless-stopped
-  # Run as your host user so files in ./data stay yours.
-  user: "${PUID:-1000}:${PGID:-1000}"
   environment: &env
     DATABASE_URL: postgres://mesh:${POSTGRES_PASSWORD:-mesh}@db:5432/mesh?sslmode=disable
     TZ: ${TZ:-UTC}
+    # The app runs as this user and makes ./data owned by it, like linuxserver.io images.
+    PUID: ${PUID:-1000}
+    PGID: ${PGID:-1000}
   volumes:
     # App data: thumbnails and config.json (the settings you change in the web UI).
     - ./data:/data

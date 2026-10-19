@@ -64,6 +64,13 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel})))
 
+	if cmd != "healthcheck" {
+		if err := dropPrivileges(cfg.DataDir); err != nil {
+			slog.Error("cannot switch to PUID/PGID", "err", err)
+			os.Exit(1)
+		}
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

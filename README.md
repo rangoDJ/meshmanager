@@ -8,7 +8,6 @@ A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It
 
 ```bash
 cp .env.example .env        # optional: set POSTGRES_PASSWORD, PUID/PGID, PORT
-mkdir -p data               # so the folder is owned by you, not root
 docker compose up -d --build
 ```
 
@@ -51,6 +50,7 @@ Library behaviour is configured in the web UI under **Settings → Library** and
 | `TRUST_PROXY` | `false` | trust `X-Forwarded-For`/`-Proto`; enable only behind a reverse proxy |
 | `COOKIE_SECURE` | `auto` | `auto` sets the cookie's Secure flag when the request came in over HTTPS; or `true`/`false` |
 | `WORKER_CONCURRENCY` | `4` | parallel background jobs (mostly thumbnail rendering) per container |
+| `PUID` / `PGID` | `1000` | user and group the app runs as; on start it makes `DATA_DIR` theirs, then drops root (like linuxserver.io images) |
 | `RUN_WORKER` | `true` | set `false` on `app` only if dedicated `worker` containers should do all job work |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `LIBRARY_ROOT` | `/libraries` | sources must be folders under this path (where library volumes are mounted) |
