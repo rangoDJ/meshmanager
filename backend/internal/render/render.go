@@ -12,12 +12,14 @@ import (
 )
 
 // Version changes whenever output changes, so stale thumbnails can be re-rendered.
-const Version = 1
+const Version = 2
 
 type Options struct {
 	Size        int // output width and height in pixels
 	Supersample int // samples per pixel along each axis
 	Color       color.NRGBA
+	// Parts colour triangle ranges; parts without a colour use Color.
+	Parts []mesh.Part
 }
 
 var DefaultColor = color.NRGBA{R: 0xa3, G: 0xb1, B: 0xd6, A: 0xff}
@@ -92,11 +94,31 @@ func Mesh(m *mesh.Mesh, opt Options) *image.NRGBA {
 		zbuf[i] = float32(math.Inf(-1))
 	}
 	shade := make([]float32, S*S)
+	colorIdx := make([]uint16, S*S)
+
+	// Palette index per part; index 0 is the default colour.
+	palette := []color.NRGBA{opt.Color}
+	partColor := make([]uint16, len(opt.Parts))
+	for i, p := range opt.Parts {
+		if c, ok := parseHex(p.Color); ok && len(palette) < 65535 {
+			partColor[i] = uint16(len(palette))
+			palette = append(palette, c)
+		}
+	}
+	part := 0
 
 	for tri := 0; tri+2 < n; tri += 3 {
 		a := vec{float64(t[tri*3]), float64(t[tri*3+1]), float64(t[tri*3+2])}
 		b := vec{float64(t[tri*3+3]), float64(t[tri*3+4]), float64(t[tri*3+5])}
 		c := vec{float64(t[tri*3+6]), float64(t[tri*3+7]), float64(t[tri*3+8])}
+		triIndex := tri / 3
+		for part < len(opt.Parts) && triIndex >= opt.Parts[part].Start+opt.Parts[part].Count {
+			part++
+		}
+		var cidx uint16
+		if part < len(opt.Parts) && triIndex >= opt.Parts[part].Start {
+			cidx = partColor[part]
+		}
 		normal := b.sub(a).cross(c.sub(a)).norm()
 		if normal.dot(view) < 0 {
 			normal = normal.scale(-1) // two-sided: inverted or open meshes still shade
@@ -141,11 +163,38 @@ func Mesh(m *mesh.Mesh, opt Options) *image.NRGBA {
 				// Subtle depth cue: farther surfaces slightly darker.
 				depth := (float64(z) - minD) / depthRange
 				shade[i] = float32(intensity * (0.8 + 0.2*depth))
+				colorIdx[i] = cidx
 			}
 		}
 	}
 
-	return resolve(zbuf, shade, opt.Size, ss, opt.Color)
+	return resolve(zbuf, shade, colorIdx, palette, opt.Size, ss)
+}
+
+// parseHex reads "#rrggbb".
+func parseHex(s string) (color.NRGBA, bool) {
+	if len(s) != 7 || s[0] != '#' {
+		return color.NRGBA{}, false
+	}
+	var v [3]uint8
+	for i := range 3 {
+		var n int
+		for _, ch := range s[1+i*2 : 3+i*2] {
+			n *= 16
+			switch {
+			case ch >= '0' && ch <= '9':
+				n += int(ch - '0')
+			case ch >= 'a' && ch <= 'f':
+				n += int(ch-'a') + 10
+			case ch >= 'A' && ch <= 'F':
+				n += int(ch-'A') + 10
+			default:
+				return color.NRGBA{}, false
+			}
+		}
+		v[i] = uint8(n)
+	}
+	return color.NRGBA{R: v[0], G: v[1], B: v[2], A: 255}, true
 }
 
 func edge(ax, ay, bx, by, px, py float64) float64 {
@@ -153,7 +202,7 @@ func edge(ax, ay, bx, by, px, py float64) float64 {
 }
 
 // resolve box-filters the supersampled buffers into the output image.
-func resolve(zbuf, shade []float32, size, ss int, base color.NRGBA) *image.NRGBA {
+func resolve(zbuf, shade []float32, colorIdx []uint16, palette []color.NRGBA, size, ss int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	S := size * ss
 	samples := float64(ss * ss)
@@ -161,26 +210,29 @@ func resolve(zbuf, shade []float32, size, ss int, base color.NRGBA) *image.NRGBA
 	for y := range size {
 		for x := range size {
 			covered := 0
-			var sum float64
+			var r, g, b float64
 			for dy := range ss {
 				row := (y*ss + dy) * S
 				for dx := range ss {
 					i := row + x*ss + dx
 					if zbuf[i] != negInf {
 						covered++
-						sum += float64(shade[i])
+						c, k := palette[colorIdx[i]], float64(shade[i])
+						r += float64(c.R) * k
+						g += float64(c.G) * k
+						b += float64(c.B) * k
 					}
 				}
 			}
 			if covered == 0 {
 				continue
 			}
-			k := sum / float64(covered)
+			n := float64(covered)
 			o := img.PixOffset(x, y)
-			img.Pix[o] = clamp(float64(base.R) * k)
-			img.Pix[o+1] = clamp(float64(base.G) * k)
-			img.Pix[o+2] = clamp(float64(base.B) * k)
-			img.Pix[o+3] = clamp(255 * float64(covered) / samples)
+			img.Pix[o] = clamp(r / n)
+			img.Pix[o+1] = clamp(g / n)
+			img.Pix[o+2] = clamp(b / n)
+			img.Pix[o+3] = clamp(255 * n / samples)
 		}
 	}
 	return img

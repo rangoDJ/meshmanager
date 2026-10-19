@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/rangoDJ/meshmanager/internal/config"
 	"github.com/rangoDJ/meshmanager/internal/db"
 	"github.com/rangoDJ/meshmanager/internal/jobs"
+	"github.com/rangoDJ/meshmanager/internal/library"
 	"github.com/rangoDJ/meshmanager/internal/settings"
 	"github.com/rangoDJ/meshmanager/internal/store"
 	"github.com/rangoDJ/meshmanager/internal/version"
@@ -108,6 +110,7 @@ func serve(ctx context.Context, cfg config.Config) error {
 	if err := bootstrapAdmin(ctx, cfg, st); err != nil {
 		return err
 	}
+	cleanTempDir(library.TempDir(cfg.DataDir))
 	set := settings.NewStore(cfg.DataDir)
 	if err := set.EnsureFile(); err != nil {
 		slog.Warn("cannot write the settings file; make DATA_DIR writable to save settings",
@@ -168,6 +171,20 @@ func serve(ctx context.Context, cfg config.Config) error {
 		err = jobsErr
 	}
 	return err
+}
+
+// cleanTempDir removes archive members left behind by an interrupted extraction.
+// Only old files go, in case a separate worker is extracting right now.
+func cleanTempDir(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if info, err := e.Info(); err == nil && time.Since(info.ModTime()) > time.Hour {
+			_ = os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
 }
 
 // bootstrapAdmin creates the admin from ADMIN_USERNAME / ADMIN_PASSWORD on first start.

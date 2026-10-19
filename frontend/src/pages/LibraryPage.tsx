@@ -1,5 +1,5 @@
 import { FolderTree, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { VirtuosoGrid } from "react-virtuoso";
 import { type FileFilters, type FileItem, useFacets, useFiles, useSources } from "../api/library";
@@ -9,6 +9,9 @@ import { Thumbnail } from "../components/Thumbnail";
 import { ErrorText, Spinner } from "../components/ui";
 import { formatBytes, formatNumber } from "../lib/format";
 import { useDebounced, useStoredState } from "../lib/hooks";
+
+// three.js is large; load the viewer only when a model is opened.
+const ModelViewer = lazy(() => import("../viewer/ModelViewer"));
 
 const kindLabels: Record<string, string> = {
   model: "Models",
@@ -48,8 +51,26 @@ function useFilters() {
   return [filters, update] as const;
 }
 
+/** The open 3D viewer lives in the URL (?view=<id>), so back and reload work. */
+function useViewerParam() {
+  const [params, setParams] = useSearchParams();
+  const id = Number(params.get("view")) || null;
+  const set = (next: number | null) =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p);
+        if (next) n.set("view", String(next));
+        else n.delete("view");
+        return n;
+      },
+      { replace: next === null },
+    );
+  return [id, set] as const;
+}
+
 export function LibraryPage() {
   const [filters, setFilters] = useFilters();
+  const [viewing, setViewing] = useViewerParam();
   const [search, setSearch] = useState(filters.q);
   const debounced = useDebounced(search, 250);
   const [tile, setTile] = useStoredState("mm.tileSize", 180);
@@ -234,7 +255,13 @@ export function LibraryPage() {
               increaseViewportBy={600}
               listClassName="grid gap-3 grid-cols-[repeat(auto-fill,minmax(var(--tile),1fr))]"
               endReached={() => files.hasNextPage && !files.isFetchingNextPage && files.fetchNextPage()}
-              itemContent={(_, file) => <Tile file={file} onOpen={() => setSelected(file.id)} />}
+              itemContent={(_, file) => (
+                <Tile
+                  file={file}
+                  onOpen={() => setSelected(file.id)}
+                  onView={file.viewable ? () => setViewing(file.id) : undefined}
+                />
+              )}
             />
             {files.isFetchingNextPage && (
               <div className="flex justify-center py-6">
@@ -245,20 +272,44 @@ export function LibraryPage() {
         )}
       </div>
 
-      {selected !== null && <FileDrawer id={selected} onClose={() => setSelected(null)} />}
+      {selected !== null && (
+        <FileDrawer id={selected} onClose={() => setSelected(null)} onView={(id) => setViewing(id)} />
+      )}
+      {viewing !== null && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg">
+              <Spinner />
+            </div>
+          }
+        >
+          <ModelViewer fileId={viewing} onClose={() => setViewing(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }
 
-function Tile({ file, onOpen }: { file: FileItem; onOpen: () => void }) {
+function Tile({ file, onOpen, onView }: { file: FileItem; onOpen: () => void; onView?: () => void }) {
   return (
-    <button onClick={onOpen} className="group block w-full text-left" title={file.rel_path}>
+    <button
+      onClick={onOpen}
+      onDoubleClick={onView}
+      className="group block w-full text-left"
+      title={onView ? `${file.rel_path}
+Double-click to open in 3D` : file.rel_path}
+    >
       <div className="aspect-square overflow-hidden rounded-xl border border-border bg-surface p-2 transition group-hover:border-accent/60 group-focus-visible:ring-2 group-focus-visible:ring-accent">
         <Thumbnail file={file} className="transition group-hover:scale-[1.03]" />
       </div>
       <p className="mt-1.5 truncate text-sm">{file.name}</p>
       <p className="truncate text-xs text-muted">
         <span className="uppercase">{file.format}</span> · {formatBytes(file.size)}
+        {file.archive_id !== null && (
+          <span className="ml-1.5 rounded bg-surface-2 px-1 py-px text-[10px] font-medium" title="Inside an archive">
+            ZIP
+          </span>
+        )}
       </p>
     </button>
   );

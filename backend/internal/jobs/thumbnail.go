@@ -12,6 +12,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/rangoDJ/meshmanager/internal/formats"
+	"github.com/rangoDJ/meshmanager/internal/library"
 	"github.com/rangoDJ/meshmanager/internal/settings"
 	"github.com/rangoDJ/meshmanager/internal/store"
 	"github.com/rangoDJ/meshmanager/internal/thumbs"
@@ -54,14 +55,20 @@ func (w *ThumbnailWorker) Work(ctx context.Context, job *river.Job[ThumbnailArgs
 		return nil // already done, e.g. a lazy and an eager request raced
 	}
 
-	full := filepath.Join(loc.SourcePath, filepath.FromSlash(loc.RelPath))
-	res, err := thumbs.Generate(full, loc.Format, w.Settings.Get().ThumbSize)
+	full, cleanup, err := library.Materialize(library.FromStore(loc), library.TempDir(w.DataDir))
+	if err == nil {
+		defer cleanup()
+	}
+	var res thumbs.Result
+	if err == nil {
+		res, err = thumbs.Generate(full, loc.Format, w.Settings.Get().ThumbSize)
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 		// Bad or unsupported files fail the same way every time; record it, don't retry.
-		slog.Info("thumbnail failed", "path", full, "err", err)
+		slog.Info("thumbnail failed", "path", loc.RelPath, "err", err)
 		return w.Store.SaveThumbnail(ctx, store.Thumbnail{
 			FileID: loc.ID, Status: store.ThumbFailed, Error: err.Error(), RendererVersion: thumbs.Version,
 		})
@@ -81,6 +88,7 @@ func (w *ThumbnailWorker) Work(ctx context.Context, job *river.Job[ThumbnailArgs
 	if st := res.Stats; st != nil {
 		return w.Store.SaveModelInfo(ctx, store.ModelInfo{
 			FileID: loc.ID, Triangles: int64(st.Triangles), Size: st.Size(), Volume: st.Volume, Area: st.Area,
+			Watertight: res.Watertight,
 		})
 	}
 	return nil

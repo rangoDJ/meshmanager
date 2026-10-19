@@ -22,6 +22,7 @@ import (
 	"github.com/zeebo/blake3"
 
 	"github.com/rangoDJ/meshmanager/internal/formats"
+	"github.com/rangoDJ/meshmanager/internal/library"
 	"github.com/rangoDJ/meshmanager/internal/store"
 )
 
@@ -157,6 +158,14 @@ func (s *Scanner) Scan(ctx context.Context, src store.Source, progress ProgressF
 	if err := flush(); err != nil {
 		return res, err
 	}
+	// Carry members of unchanged archives forward first: archives that changed were just
+	// reset to unindexed by the walk, so they're excluded here and re-listed below.
+	if err := s.Store.CarryArchiveMembers(ctx, src.ID, gen); err != nil {
+		return res, err
+	}
+	if err := s.expandArchives(ctx, src, gen, &res, progress); err != nil {
+		return res, err
+	}
 	if res.Missing, err = s.Store.MarkMissing(ctx, src.ID, gen); err != nil {
 		return res, err
 	}
@@ -164,6 +173,79 @@ func (s *Scanner) Scan(ctx context.Context, src store.Source, progress ProgressF
 	hashed, failed, err := s.hashAll(ctx, src, progress)
 	res.Hashed, res.HashErrors = hashed, failed
 	return res, err
+}
+
+// archiveFormats are the archive formats whose contents are indexed.
+var archiveFormats = []string{"zip"}
+
+// expandArchives indexes the supported files inside new or changed archives, as if
+// each archive were a folder. Unchanged archives keep their members (see
+// CarryArchiveMembers); archives inside archives are listed but not opened.
+func (s *Scanner) expandArchives(ctx context.Context, src store.Source, gen int64, res *Result, progress ProgressFunc) error {
+	archives, err := s.Store.ArchivesToList(ctx, src.ID, archiveFormats)
+	if err != nil {
+		return err
+	}
+	for i, a := range archives {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		progress(0, fmt.Sprintf("Reading archives… %d of %d", i+1, len(archives)))
+		members, err := library.ListZip(filepath.Join(src.Path, filepath.FromSlash(a.RelPath)))
+		if err != nil {
+			// Corrupt or encrypted: note it once; it's retried when the file changes.
+			res.WalkErrors++
+			slog.Warn("scan: cannot read archive", "path", a.RelPath, "err", err)
+			if err := s.Store.MarkMembersIndexed(ctx, a.ID); err != nil {
+				return err
+			}
+			continue
+		}
+
+		batch := make([]store.FileEntry, 0, batchSize)
+		flush := func() error {
+			n, err := s.Store.UpsertFiles(ctx, src.ID, gen, batch)
+			res.Changed += n
+			batch = batch[:0]
+			return err
+		}
+		for _, m := range members {
+			clean := strings.TrimPrefix(path.Clean("/"+strings.ReplaceAll(m.Name, "\\", "/")), "/")
+			name := path.Base(clean)
+			if clean == "" || skipFile(name) {
+				continue
+			}
+			f, ok := formats.Detect(name)
+			if !ok || (f.Kind == formats.Video && !s.IndexVideos) {
+				continue
+			}
+			rel := a.RelPath + "/" + clean
+			batch = append(batch, store.FileEntry{
+				RelPath:    rel,
+				Dir:        path.Dir(rel),
+				Name:       name,
+				Kind:       string(f.Kind),
+				Format:     f.Name,
+				Size:       m.Size,
+				Mtime:      time.UnixMicro(m.Time).UTC(),
+				ArchiveID:  a.ID,
+				MemberPath: m.Name,
+			})
+			res.Files++
+			if len(batch) >= batchSize {
+				if err := flush(); err != nil {
+					return err
+				}
+			}
+		}
+		if err := flush(); err != nil {
+			return err
+		}
+		if err := s.Store.MarkMembersIndexed(ctx, a.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // hashAll hashes every unhashed model and archive with a bounded worker pool.
@@ -210,14 +292,14 @@ func (s *Scanner) hashAll(ctx context.Context, src store.Source, progress Progre
 	for range workers {
 		wg.Go(func() {
 			for t := range targets {
-				full := filepath.Join(src.Path, filepath.FromSlash(t.RelPath))
-				sum, err := hashFile(ctx, full)
+				loc := library.Location{SourcePath: src.Path, RelPath: t.RelPath, ArchiveRelPath: t.ArchiveRelPath, MemberPath: t.MemberPath}
+				sum, err := hashFile(ctx, loc)
 				if err == nil {
 					err = s.Store.SetContentHash(ctx, t.ID, sum)
 				}
 				if err != nil && ctx.Err() == nil {
 					failed.Add(1)
-					slog.Warn("scan: hash failed", "path", full, "err", err)
+					slog.Warn("scan: hash failed", "path", t.RelPath, "err", err)
 				}
 				doneFiles.Add(1)
 				doneBytes.Add(t.Size)
@@ -254,8 +336,8 @@ func (s *Scanner) hashAll(ctx context.Context, src store.Source, progress Progre
 	return int(doneFiles.Load() - failed.Load()), int(failed.Load()), ctx.Err()
 }
 
-func hashFile(ctx context.Context, p string) (string, error) {
-	f, err := os.Open(p)
+func hashFile(ctx context.Context, loc library.Location) (string, error) {
+	f, _, err := library.Open(loc)
 	if err != nil {
 		return "", err
 	}

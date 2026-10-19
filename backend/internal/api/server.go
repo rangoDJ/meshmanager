@@ -29,6 +29,8 @@ type Server struct {
 	settings *settings.Store
 	web      http.Handler
 	limiter  *auth.RateLimiter
+	// geometrySlots bounds concurrent model conversions for the viewer (memory heavy).
+	geometrySlots chan struct{}
 }
 
 type Deps struct {
@@ -49,6 +51,8 @@ func New(d Deps) *Server {
 		settings: d.Settings,
 		web:      d.Web,
 		limiter:  auth.NewRateLimiter(10, 5*time.Minute),
+
+		geometrySlots: make(chan struct{}, 2),
 	}
 }
 
@@ -85,6 +89,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/files/{id}", s.requireAuth(s.handleGetFile))
 	mux.Handle("GET /api/files/{id}/thumbnail", s.requireAuth(s.handleThumbnail))
 	mux.Handle("GET /api/files/{id}/download", s.requireAuth(s.handleDownload))
+	mux.Handle("GET /api/files/{id}/geometry", s.requireAuth(s.handleGeometry))
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")

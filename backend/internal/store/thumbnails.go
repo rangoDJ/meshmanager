@@ -53,22 +53,23 @@ func (s *Store) SaveThumbnail(ctx context.Context, t Thumbnail) error {
 }
 
 type ModelInfo struct {
-	FileID    int64
-	Triangles int64
-	Size      [3]float64
-	Volume    float64
-	Area      float64
+	FileID     int64
+	Triangles  int64
+	Size       [3]float64
+	Volume     float64
+	Area       float64
+	Watertight *bool
 }
 
 func (s *Store) SaveModelInfo(ctx context.Context, m ModelInfo) error {
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO model_info (file_id, triangles, size_x, size_y, size_z, volume_mm3, area_mm2)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO model_info (file_id, triangles, size_x, size_y, size_z, volume_mm3, area_mm2, watertight)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (file_id) DO UPDATE SET
 			triangles = EXCLUDED.triangles, size_x = EXCLUDED.size_x, size_y = EXCLUDED.size_y,
 			size_z = EXCLUDED.size_z, volume_mm3 = EXCLUDED.volume_mm3, area_mm2 = EXCLUDED.area_mm2,
-			analyzed_at = now()`,
-		m.FileID, m.Triangles, m.Size[0], m.Size[1], m.Size[2], m.Volume, m.Area)
+			watertight = EXCLUDED.watertight, analyzed_at = now()`,
+		m.FileID, m.Triangles, m.Size[0], m.Size[1], m.Size[2], m.Volume, m.Area, m.Watertight)
 	return err
 }
 

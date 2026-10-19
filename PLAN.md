@@ -137,7 +137,7 @@ Meshory is a desktop app, so some features need a web equivalent:
 | Images | stdlib + `golang.org/x/image` (PNG/JPG/GIF/WEBP/BMP); HEIC/AVIF/PDF/video through the sidecar | |
 | Hashing | BLAKE3 (`zeebo/blake3`, SIMD) | Fast on large files |
 | Frontend | **React 19 + TypeScript + Vite**, TanStack Query, React Router, Tailwind 4; later `react-virtuoso` grid and **three.js via react-three-fiber + drei** | Built into `dist/` and embedded in the Go binary |
-| Viewer data | The server converts any model to a cached **GLB** (plus a plate and part manifest JSON). The browser only ever loads GLB. | One viewer code path; STEP and FBX tessellation happen once |
+| Viewer data | `GET /api/files/{id}/geometry` converts any model on demand to a compact binary: a JSON header (parts with names, plates and colours; bounds; volume; watertight) followed by `float32` triangles. It's gzipped, and the browser caches it via the ETag. three.js renders one mesh per part. | One viewer code path through the tested Go loaders; no conversion cache filling up `/data` |
 | Packaging | Multi-stage Dockerfile (node build → go build → distroless/static, about 20 MB); amd64 and arm64 | Runs on a Raspberry Pi 5 or ARM NAS too |
 
 ### 3.2 Data model (core tables)
@@ -220,7 +220,7 @@ meshmanager/
 |---|---|---|---|
 | 0 ✅ | **Skeleton** | Repo, Dockerfile, compose, Go API + React shell, Postgres + goose, River worker, single-admin login, CI (lint, test, multi-arch build) | `docker compose up` shows the login page and a health check passes |
 | 1 ✅ | **Index and grid (MVP core)** | Sources UI, scanner, BLAKE3 hashing, STL/OBJ/3MF/PLY/GLB analysis, software-rendered thumbnails, lazy/eager modes, virtualized grid, folder tree, format filter, name/path search, download | A 100k-file test library indexes, and scrolling stays smooth |
-| 2 | **Viewer** | GLB conversion cache, three.js viewer, camera presets, Bambu multi-plate and colors, info panel (dimensions/volume/weight), screenshots, ZIP browsing | A Bambu multi-plate 3MF shows the right plates and colors |
+| 2 ✅ | **Viewer** | On-demand geometry endpoint, three.js viewer, camera presets, Bambu/Orca plates and colours, PrusaSlicer volumes, info panel (dimensions/volume/weight/watertight), screenshots, ZIP browsing | A Bambu multi-plate 3MF shows the right plates and colors |
 | 3 | **Archives, formats, companion files** | RAR/7Z/TAR, `convert` sidecar (FBX, STEP, HEIC, PDF, video), images/PDF/MD/video viewer, host-path "reveal" | Every format in §2.2 marked MVP/v1 works |
 | 4 | **Duplicates** | Exact, geometry and likely groups, keeper suggestions, review UI, CSV export | A seeded test set produces the expected groups |
 | 5 | **Organize** | Tags, notes, collections, "Not in a collection", photos, print queue with PDF/CSV export, rename/move reconciliation, bulk actions | Tags survive a rename on disk followed by a rescan |

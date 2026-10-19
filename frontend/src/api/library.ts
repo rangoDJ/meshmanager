@@ -36,12 +36,17 @@ export type FileItem = {
   size: number;
   mtime: string;
   content_hash: string | null;
+  /** Set for files inside an archive. */
+  archive_id: number | null;
   thumb: "ready" | "pending" | "failed" | "none";
   thumb_url: string | null;
   thumb_error?: string;
   triangles: number | null;
   dimensions: [number, number, number] | null;
   volume_mm3: number | null;
+  area_mm2: number | null;
+  watertight: boolean | null;
+  viewable: boolean;
 };
 
 export type FileList = { items: FileItem[]; next_cursor: string | null; total?: number };

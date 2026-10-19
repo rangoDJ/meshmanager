@@ -37,8 +37,10 @@ type Result struct {
 	Image       image.Image
 	Origin      string
 	ContentType string
-	// Stats is set when the mesh was loaded (not for embedded previews or images).
-	Stats *mesh.Stats
+	// Stats and Watertight are set when the mesh was loaded (not for embedded previews
+	// or images). Watertight is nil when the mesh was too large to check.
+	Stats      *mesh.Stats
+	Watertight *bool
 }
 
 var ErrUnsupported = errors.New("no thumbnail support for this format")
@@ -71,13 +73,19 @@ func Generate(path, format string, size int) (Result, error) {
 }
 
 func renderModel(path, format string, size int) (Result, error) {
-	m, err := mesh.Load(path, format)
+	m, err := mesh.LoadModel(path, format)
 	if err != nil {
 		return Result{}, err
 	}
 	st := m.Stats()
-	img := render.Mesh(m, render.Options{Size: size, Supersample: 2})
-	return Result{Image: img, Origin: OriginRendered, ContentType: "image/png", Stats: &st}, nil
+	res := Result{Origin: OriginRendered, ContentType: "image/png", Stats: &st}
+	if closed, checked := m.Watertight(); checked {
+		res.Watertight = &closed
+	}
+	// A multi-plate project shows its first plate, not every plate spread out.
+	shown := m.OnPlate(m.FirstPlate())
+	res.Image = render.Mesh(&shown.Mesh, render.Options{Size: size, Supersample: 2, Parts: shown.Parts})
+	return res, nil
 }
 
 func decodeImage(path string) (image.Image, error) {

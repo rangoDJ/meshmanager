@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 )
 
 // MaxTriangles caps memory per model (~36 bytes per triangle).
@@ -89,43 +88,60 @@ func cross(a, b [3]float64) [3]float64 {
 	return [3]float64{a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]}
 }
 
-// Load reads a model file of the given format name (see package formats).
+// Load reads just the geometry of a model file (see LoadModel for parts and colours).
 func Load(path, format string) (*Mesh, error) {
-	var (
-		m   *Mesh
-		err error
-	)
-	switch format {
-	case "3mf":
-		m, err = Read3MF(path)
-	case "glb":
-		m, err = ReadGLB(path)
-	case "stl", "obj", "ply":
-		var f *os.File
-		if f, err = os.Open(path); err != nil {
-			return nil, err
-		}
-		defer f.Close()
-		switch format {
-		case "stl":
-			var st os.FileInfo
-			if st, err = f.Stat(); err != nil {
-				return nil, err
-			}
-			m, err = ReadSTL(f, st.Size())
-		case "obj":
-			m, err = ReadOBJ(f)
-		case "ply":
-			m, err = ReadPLY(f)
-		}
-	default:
-		return nil, ErrUnsupported
-	}
+	m, err := LoadModel(path, format)
 	if err != nil {
 		return nil, err
 	}
-	if m.Triangles() == 0 {
-		return nil, ErrEmpty
+	return &m.Mesh, nil
+}
+
+// maxWatertightCheck bounds the memory of the edge map (~100 bytes per triangle).
+const maxWatertightCheck = 3_000_000
+
+// Watertight reports whether the mesh is closed: after welding vertices with identical
+// coordinates, every edge is shared by exactly two triangles. checked is false when the
+// mesh is too large to check.
+func (m *Mesh) Watertight() (closed, checked bool) {
+	n := m.Triangles()
+	if n == 0 || n > maxWatertightCheck {
+		return false, false
 	}
-	return m, nil
+	t := m.Tris
+	ids := make(map[[3]float32]uint32, n/2+1)
+	vertex := func(i int) uint32 {
+		k := [3]float32{t[i], t[i+1], t[i+2]}
+		if id, ok := ids[k]; ok {
+			return id
+		}
+		id := uint32(len(ids))
+		ids[k] = id
+		return id
+	}
+	edges := make(map[uint64]uint8, n*3/2+1)
+	addEdge := func(a, b uint32) {
+		if a > b {
+			a, b = b, a
+		}
+		k := uint64(a)<<32 | uint64(b)
+		if edges[k] < 255 {
+			edges[k]++
+		}
+	}
+	for i := 0; i+8 < len(t); i += 9 {
+		a, b, c := vertex(i), vertex(i+3), vertex(i+6)
+		if a == b || b == c || a == c {
+			continue // degenerate (e.g. at a sphere's poles); not part of the surface
+		}
+		addEdge(a, b)
+		addEdge(b, c)
+		addEdge(c, a)
+	}
+	for _, count := range edges {
+		if count != 2 {
+			return false, true
+		}
+	}
+	return true, true
 }

@@ -2,7 +2,13 @@
 
 A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It indexes the folders where your models already live, renders thumbnails, and lets you search, preview and deduplicate them. It never moves or modifies your files.
 
-> **Status: milestone 1.** Sources, the background scanner with BLAKE3 hashing, thumbnails (STL, OBJ, PLY, 3MF, GLB and images; slicer previews embedded in 3MF files are used first), and a searchable, virtualized library grid with a folder tree. The 3D viewer comes next. See [PLAN.md](PLAN.md).
+> **Status: milestone 2.** The library is in place: sources, a background scanner with BLAKE3 hashing, thumbnails, and a searchable grid with a folder tree. On top of that:
+>
+> - **3D viewer:** camera presets, orthographic view, wireframe, screenshots, and an info panel with size, volume, a watertight check and an estimated print weight.
+> - **Slicer projects:** Bambu Studio/OrcaSlicer plates and filament colours; PrusaSlicer volumes. Modifier and support parts are hidden.
+> - **ZIP archives:** browsed like folders. Files inside are indexed, hashed, thumbnailed and viewable without extracting.
+>
+> Duplicates come next. See [PLAN.md](PLAN.md).
 
 ## Run with Docker
 
@@ -106,10 +112,14 @@ backend/
   internal/config/     environment configuration
   internal/db/         connection, goose migrations (db/migrations/*.sql), River migrations
   internal/jobs/       River job definitions and workers
+  internal/library/    opens indexed files on disk or inside ZIP archives
+  internal/mesh/       model loaders (STL, OBJ, PLY, 3MF incl. slicer data, GLB)
+  internal/render/     software rasterizer for thumbnails
+  internal/scan/       folder walker, archive lister, BLAKE3 hasher
   internal/settings/   user-editable settings in DATA_DIR/config.json
   internal/store/      SQL queries
   internal/web/        serves the React build embedded in the binary
-frontend/              React + TypeScript + Vite + Tailwind
+frontend/              React + TypeScript + Vite + Tailwind; src/viewer/ is the three.js viewer
 Dockerfile             node build → go build → distroless image (amd64 + arm64)
 ```
 

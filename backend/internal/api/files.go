@@ -2,6 +2,8 @@ package api
 
 import (
 	"errors"
+	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"os"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/rangoDJ/meshmanager/internal/formats"
 	"github.com/rangoDJ/meshmanager/internal/jobs"
+	"github.com/rangoDJ/meshmanager/internal/library"
 	"github.com/rangoDJ/meshmanager/internal/store"
 	"github.com/rangoDJ/meshmanager/internal/thumbs"
 )
@@ -21,17 +24,21 @@ type fileView struct {
 	Thumb string `json:"thumb"`
 	// ThumbURL includes a version so browsers can cache the image forever.
 	ThumbURL *string `json:"thumb_url"`
+	// Viewable is true when the file opens in the 3D viewer.
+	Viewable bool `json:"viewable"`
 }
 
 func toView(it store.FileItem) fileView {
-	v := fileView{FileItem: it}
+	v := fileView{FileItem: it, Viewable: formats.CanView(it.Format)}
 	base := "/api/files/" + strconv.FormatInt(it.ID, 10) + "/thumbnail"
+	// A thumbnail from an older renderer counts as not rendered yet.
+	current := it.ThumbVersion != nil && *it.ThumbVersion == thumbs.Version
 	switch {
-	case it.ThumbStatus != nil && *it.ThumbStatus == store.ThumbReady:
+	case current && it.ThumbStatus != nil && *it.ThumbStatus == store.ThumbReady:
 		v.Thumb = "ready"
 		u := base + "?v=" + strconv.FormatInt(it.ThumbAt.UnixMilli(), 10)
 		v.ThumbURL = &u
-	case it.ThumbStatus != nil && *it.ThumbStatus == store.ThumbFailed:
+	case current && it.ThumbStatus != nil && *it.ThumbStatus == store.ThumbFailed:
 		v.Thumb = "failed"
 	case formats.CanThumbnail(it.Format):
 		v.Thumb = "pending"
@@ -166,7 +173,7 @@ func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 		}
 		http.ServeContent(w, r, "", t.CreatedAt, f)
 		return
-	case err == nil && t.Status == store.ThumbFailed:
+	case err == nil && t.Status == store.ThumbFailed && t.RendererVersion == thumbs.Version:
 		writeError(w, http.StatusNotFound, "thumbnail could not be generated: "+t.Error)
 		return
 	case err != nil && !errors.Is(err, store.ErrNotFound):
@@ -210,25 +217,42 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		internalError(w, r, err)
 		return
 	}
-	full := filepath.Join(loc.SourcePath, filepath.FromSlash(loc.RelPath))
-	if !within(filepath.Clean(loc.SourcePath), full) {
+	lib := library.FromStore(loc)
+	if !within(filepath.Clean(loc.SourcePath), lib.DiskPath()) {
 		writeError(w, http.StatusNotFound, "file not found")
-		return
-	}
-	f, err := os.Open(full)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "file is no longer on disk")
-		return
-	}
-	defer f.Close()
-	st, err := f.Stat()
-	if err != nil || st.IsDir() {
-		writeError(w, http.StatusNotFound, "file is no longer on disk")
 		return
 	}
 	// Always an attachment with a neutral type, so nothing from the library (SVG, HTML
 	// inside a model pack) ever renders in the app's origin.
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": loc.Name}))
-	http.ServeContent(w, r, "", st.ModTime(), f)
+
+	if !lib.IsMember() {
+		f, err := os.Open(lib.DiskPath())
+		if err != nil {
+			writeError(w, http.StatusNotFound, "file is no longer on disk")
+			return
+		}
+		defer f.Close()
+		st, err := f.Stat()
+		if err != nil || st.IsDir() {
+			writeError(w, http.StatusNotFound, "file is no longer on disk")
+			return
+		}
+		http.ServeContent(w, r, "", st.ModTime(), f)
+		return
+	}
+
+	// Archive members stream straight out of the archive (no range requests).
+	rc, size, err := library.Open(lib)
+	if err != nil {
+		w.Header().Del("Content-Disposition")
+		writeError(w, http.StatusNotFound, "cannot open this file: "+err.Error())
+		return
+	}
+	defer rc.Close()
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	if _, err := io.Copy(w, rc); err != nil && r.Context().Err() == nil {
+		slog.Warn("download archive member", "file", loc.ID, "err", err)
+	}
 }

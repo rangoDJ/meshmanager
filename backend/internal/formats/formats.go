@@ -110,6 +110,15 @@ func ThumbnailFormats() []string {
 	return out
 }
 
+// CanView reports whether a format opens in the 3D viewer.
+func CanView(format string) bool {
+	switch format {
+	case "stl", "3mf", "obj", "ply", "glb":
+		return true
+	}
+	return false
+}
+
 // CanThumbnail reports whether a format name can get a thumbnail.
 func CanThumbnail(format string) bool {
 	for _, f := range byExt {

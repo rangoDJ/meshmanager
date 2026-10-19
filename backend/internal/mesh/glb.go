@@ -2,6 +2,7 @@ package mesh
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/qmuntal/gltf"
@@ -58,14 +59,24 @@ func nodeMatrix(n *gltf.Node) mat4 {
 	return trans.mul(rot).mul(scale)
 }
 
-// ReadGLB loads the default scene of a binary glTF, with node transforms applied.
-// glTF is Y-up; the result is Z-up millimetres.
+// ReadGLB loads the geometry of the default scene of a binary glTF.
 func ReadGLB(path string) (*Mesh, error) {
+	m, err := ReadGLBModel(path)
+	if err != nil {
+		return nil, err
+	}
+	return &m.Mesh, nil
+}
+
+// ReadGLBModel loads the default scene of a binary glTF with node transforms applied,
+// one part per primitive coloured by its material. glTF is Y-up; the result is Z-up
+// millimetres.
+func ReadGLBModel(path string) (*Model, error) {
 	doc, err := gltf.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	g := &glbLoader{doc: doc, mesh: &Mesh{}}
+	g := &glbLoader{doc: doc, mesh: &Model{}}
 
 	var roots []int
 	switch {
@@ -76,7 +87,7 @@ func ReadGLB(path string) (*Mesh, error) {
 	}
 	if len(roots) == 0 {
 		for i := range doc.Meshes {
-			if err := g.addMesh(i, ident4); err != nil {
+			if err := g.addMesh(i, ident4, ""); err != nil {
 				return nil, err
 			}
 		}
@@ -102,7 +113,7 @@ func ReadGLB(path string) (*Mesh, error) {
 
 type glbLoader struct {
 	doc  *gltf.Document
-	mesh *Mesh
+	mesh *Model
 }
 
 func (g *glbLoader) walk(idx int, parent mat4, depth int) error {
@@ -112,7 +123,7 @@ func (g *glbLoader) walk(idx int, parent mat4, depth int) error {
 	n := g.doc.Nodes[idx]
 	world := parent.mul(nodeMatrix(n))
 	if n.Mesh != nil {
-		if err := g.addMesh(*n.Mesh, world); err != nil {
+		if err := g.addMesh(*n.Mesh, world, n.Name); err != nil {
 			return err
 		}
 	}
@@ -124,11 +135,12 @@ func (g *glbLoader) walk(idx int, parent mat4, depth int) error {
 	return nil
 }
 
-func (g *glbLoader) addMesh(idx int, xf mat4) error {
+func (g *glbLoader) addMesh(idx int, xf mat4, nodeName string) error {
 	if idx < 0 || idx >= len(g.doc.Meshes) {
 		return nil
 	}
-	for _, prim := range g.doc.Meshes[idx].Primitives {
+	m := g.doc.Meshes[idx]
+	for _, prim := range m.Primitives {
 		if _, draco := prim.Extensions["KHR_draco_mesh_compression"]; draco {
 			return errors.New("Draco-compressed glTF is not supported yet")
 		}
@@ -154,6 +166,7 @@ func (g *glbLoader) addMesh(idx int, xf mat4) error {
 				indices[i] = uint32(i)
 			}
 		}
+		g.mesh.beginPart(firstNonEmpty(m.Name, nodeName, fmt.Sprintf("Mesh %d", idx+1)), 0, g.materialColor(prim))
 		world := make([][3]float32, len(pos))
 		for i, p := range pos {
 			world[i] = xf.apply(p)
@@ -169,4 +182,15 @@ func (g *glbLoader) addMesh(idx int, xf mat4) error {
 		}
 	}
 	return nil
+}
+
+func (g *glbLoader) materialColor(prim *gltf.Primitive) string {
+	if prim.Material == nil || *prim.Material >= len(g.doc.Materials) {
+		return ""
+	}
+	pbr := g.doc.Materials[*prim.Material].PBRMetallicRoughness
+	if pbr == nil || pbr.BaseColorFactor == nil {
+		return ""
+	}
+	return rgbaToHex(*pbr.BaseColorFactor)
 }

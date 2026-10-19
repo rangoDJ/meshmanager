@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, HardDrive, Layers } from "lucide-react";
+import { Archive, ChevronRight, Folder, HardDrive, Layers } from "lucide-react";
 import { useState } from "react";
 import { type FolderNode, type Source, useTree } from "../api/library";
 import { formatNumber } from "../lib/format";
@@ -77,7 +77,11 @@ function TreeNode({ node, selected, onSelect }: { node: FolderNode; selected: st
           <ChevronRight className={`size-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
         </button>
         <button className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-2 text-left" onClick={() => onSelect(node.path)}>
-          <Folder className="size-3.5 shrink-0" aria-hidden />
+          {/\.zip$/i.test(node.name) ? (
+            <Archive className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <Folder className="size-3.5 shrink-0" aria-hidden />
+          )}
           <span className="truncate">{node.name}</span>
           <span className="ml-auto pl-2 text-xs tabular-nums opacity-70">{formatNumber(node.count)}</span>
         </button>

@@ -86,3 +86,13 @@ func BenchmarkRenderMillionTriangles(b *testing.B) {
 	}
 	b.ReportMetric(float64(time.Since(start).Milliseconds())/float64(b.N), "ms/render")
 }
+
+func TestRenderPartColors(t *testing.T) {
+	m := cube()
+	parts := []mesh.Part{{Start: 0, Count: 12, Color: "#ff0000"}}
+	img := Mesh(m, Options{Size: 64, Supersample: 2, Parts: parts})
+	c := img.NRGBAAt(32, 32)
+	if c.A != 255 || c.R <= c.G || c.R <= c.B || c.G > 10 {
+		t.Fatalf("expected a red-shaded pixel, got %v", c)
+	}
+}

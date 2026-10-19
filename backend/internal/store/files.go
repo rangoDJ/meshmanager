@@ -21,6 +21,9 @@ type FileEntry struct {
 	Format  string
 	Size    int64
 	Mtime   time.Time
+	// For files inside an archive: the archive's file id and the member's path in it.
+	ArchiveID  int64
+	MemberPath string
 }
 
 // UpsertFiles records a batch of files seen in scan generation gen. Files that are new,
@@ -37,9 +40,11 @@ func (s *Store) UpsertFiles(ctx context.Context, sourceID, gen int64, entries []
 	fmts := make([]string, len(entries))
 	sizes := make([]int64, len(entries))
 	mtimes := make([]time.Time, len(entries))
+	archives := make([]int64, len(entries))
+	members := make([]string, len(entries))
 	for i, e := range entries {
 		paths[i], dirs[i], names[i], kinds[i], fmts[i] = e.RelPath, e.Dir, e.Name, e.Kind, e.Format
-		sizes[i], mtimes[i] = e.Size, e.Mtime
+		sizes[i], mtimes[i], archives[i], members[i] = e.Size, e.Mtime, e.ArchiveID, e.MemberPath
 	}
 
 	changed := 0
@@ -71,21 +76,28 @@ func (s *Store) UpsertFiles(ctx context.Context, sourceID, gen int64, entries []
 		}
 
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO files (source_id, rel_path, dir, name, kind, format, size, mtime, seen_generation)
-			SELECT $1, * , $9 FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[],
-			                              $7::bigint[], $8::timestamptz[])
+			INSERT INTO files (source_id, rel_path, dir, name, kind, format, size, mtime, seen_generation,
+			                   archive_id, member_path)
+			SELECT $1, u.rel, u.dir, u.name, u.kind, u.fmt, u.size, u.mtime, $9, NULLIF(u.aid, 0), NULLIF(u.member, '')
+			FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::bigint[],
+			            $8::timestamptz[], $10::bigint[], $11::text[])
+			     AS u(rel, dir, name, kind, fmt, size, mtime, aid, member)
 			ON CONFLICT (source_id, rel_path) DO UPDATE SET
 				kind = EXCLUDED.kind,
 				format = EXCLUDED.format,
 				size = EXCLUDED.size,
 				mtime = EXCLUDED.mtime,
 				seen_generation = EXCLUDED.seen_generation,
+				archive_id = EXCLUDED.archive_id,
+				member_path = EXCLUDED.member_path,
 				status = 'present',
 				missing_since = NULL,
 				content_hash = CASE
 					WHEN files.size = EXCLUDED.size AND files.mtime = EXCLUDED.mtime THEN files.content_hash
-				END`,
-			sourceID, paths, dirs, names, kinds, fmts, sizes, mtimes, gen); err != nil {
+				END,
+				members_indexed = files.members_indexed
+					AND files.size = EXCLUDED.size AND files.mtime = EXCLUDED.mtime`,
+			sourceID, paths, dirs, names, kinds, fmts, sizes, mtimes, gen, archives, members); err != nil {
 			return err
 		}
 
@@ -126,21 +138,25 @@ type HashTarget struct {
 	ID      int64
 	RelPath string
 	Size    int64
+	// Set for archive members: where to read the bytes from.
+	ArchiveRelPath string
+	MemberPath     string
 }
 
 // UnhashedFiles pages through present files of the given kinds that have no content hash.
 func (s *Store) UnhashedFiles(ctx context.Context, sourceID int64, kinds []string, afterID int64, limit int) ([]HashTarget, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, rel_path, size FROM files
-		WHERE source_id = $1 AND status = 'present' AND content_hash IS NULL
-		  AND kind = ANY($2) AND id > $3
-		ORDER BY id LIMIT $4`, sourceID, kinds, afterID, limit)
+		SELECT f.id, f.rel_path, f.size, coalesce(a.rel_path, ''), coalesce(f.member_path, '')
+		FROM files f LEFT JOIN files a ON a.id = f.archive_id
+		WHERE f.source_id = $1 AND f.status = 'present' AND f.content_hash IS NULL
+		  AND f.kind = ANY($2) AND f.id > $3
+		ORDER BY f.id LIMIT $4`, sourceID, kinds, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (HashTarget, error) {
 		var t HashTarget
-		err := r.Scan(&t.ID, &t.RelPath, &t.Size)
+		err := r.Scan(&t.ID, &t.RelPath, &t.Size, &t.ArchiveRelPath, &t.MemberPath)
 		return t, err
 	})
 }
@@ -173,26 +189,70 @@ func (s *Store) FilesNeedingThumbnails(ctx context.Context, sourceID int64, form
 	return pgx.CollectRows(rows, pgx.RowTo[int64])
 }
 
-// FileLocation is what's needed to open a file on disk.
+// FileLocation is what's needed to open a file: a path on disk, or for archive members,
+// the archive's path plus the member's path inside it.
 type FileLocation struct {
-	ID         int64
-	SourceID   int64
-	SourcePath string
-	RelPath    string
-	Name       string
-	Format     string
-	Status     string
-	Size       int64
-	Mtime      time.Time
+	ID             int64
+	SourceID       int64
+	SourcePath     string
+	RelPath        string
+	Name           string
+	Format         string
+	Status         string
+	Size           int64
+	Mtime          time.Time
+	ArchiveRelPath string
+	MemberPath     string
 }
 
 func (s *Store) GetFileLocation(ctx context.Context, id int64) (FileLocation, error) {
 	var l FileLocation
 	err := s.db.QueryRow(ctx, `
-		SELECT f.id, f.source_id, s.path, f.rel_path, f.name, f.format, f.status, f.size, f.mtime
-		FROM files f JOIN sources s ON s.id = f.source_id WHERE f.id = $1`, id,
-	).Scan(&l.ID, &l.SourceID, &l.SourcePath, &l.RelPath, &l.Name, &l.Format, &l.Status, &l.Size, &l.Mtime)
+		SELECT f.id, f.source_id, s.path, f.rel_path, f.name, f.format, f.status, f.size, f.mtime,
+		       coalesce(a.rel_path, ''), coalesce(f.member_path, '')
+		FROM files f JOIN sources s ON s.id = f.source_id
+		LEFT JOIN files a ON a.id = f.archive_id
+		WHERE f.id = $1`, id,
+	).Scan(&l.ID, &l.SourceID, &l.SourcePath, &l.RelPath, &l.Name, &l.Format, &l.Status, &l.Size, &l.Mtime,
+		&l.ArchiveRelPath, &l.MemberPath)
 	return l, notFound(err)
+}
+
+type ArchiveRef struct {
+	ID      int64
+	RelPath string
+	Format  string
+}
+
+// ArchivesToList returns present archives of a source whose members haven't been
+// indexed since they last changed.
+func (s *Store) ArchivesToList(ctx context.Context, sourceID int64, formats []string) ([]ArchiveRef, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, rel_path, format FROM files
+		WHERE source_id = $1 AND status = 'present' AND kind = 'archive' AND archive_id IS NULL
+		  AND format = ANY($2) AND NOT members_indexed
+		ORDER BY id`, sourceID, formats)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[ArchiveRef])
+}
+
+func (s *Store) MarkMembersIndexed(ctx context.Context, archiveID int64) error {
+	_, err := s.db.Exec(ctx, "UPDATE files SET members_indexed = true WHERE id = $1", archiveID)
+	return err
+}
+
+// CarryArchiveMembers moves the members of unchanged (still indexed) archives seen in
+// generation gen into that generation, so MarkMissing keeps them. Call it before
+// re-listing changed archives.
+func (s *Store) CarryArchiveMembers(ctx context.Context, sourceID, gen int64) error {
+	_, err := s.db.Exec(ctx, `
+		UPDATE files m SET seen_generation = $2, status = 'present', missing_since = NULL
+		FROM files a
+		WHERE m.archive_id = a.id AND a.source_id = $1 AND a.seen_generation = $2
+		  AND a.members_indexed AND m.seen_generation < $2`, sourceID, gen)
+	return err
 }
 
 // --- listing -----------------------------------------------------------------
@@ -210,23 +270,27 @@ type FileFilter struct {
 }
 
 type FileItem struct {
-	ID          int64       `json:"id"`
-	SourceID    int64       `json:"source_id"`
-	SourceName  string      `json:"source_name"`
-	RelPath     string      `json:"rel_path"`
-	Dir         string      `json:"dir"`
-	Name        string      `json:"name"`
-	Kind        string      `json:"kind"`
-	Format      string      `json:"format"`
-	Size        int64       `json:"size"`
-	Mtime       time.Time   `json:"mtime"`
-	ContentHash *string     `json:"content_hash"`
-	ThumbStatus *string     `json:"-"`
-	ThumbAt     *time.Time  `json:"-"`
-	ThumbError  *string     `json:"thumb_error,omitempty"`
-	Triangles   *int64      `json:"triangles"`
-	Dimensions  *[3]float64 `json:"dimensions"`
-	VolumeMM3   *float64    `json:"volume_mm3"`
+	ID           int64       `json:"id"`
+	SourceID     int64       `json:"source_id"`
+	SourceName   string      `json:"source_name"`
+	RelPath      string      `json:"rel_path"`
+	Dir          string      `json:"dir"`
+	Name         string      `json:"name"`
+	Kind         string      `json:"kind"`
+	Format       string      `json:"format"`
+	Size         int64       `json:"size"`
+	Mtime        time.Time   `json:"mtime"`
+	ContentHash  *string     `json:"content_hash"`
+	ArchiveID    *int64      `json:"archive_id"`
+	ThumbStatus  *string     `json:"-"`
+	ThumbAt      *time.Time  `json:"-"`
+	ThumbVersion *int        `json:"-"`
+	ThumbError   *string     `json:"thumb_error,omitempty"`
+	Triangles    *int64      `json:"triangles"`
+	Dimensions   *[3]float64 `json:"dimensions"`
+	VolumeMM3    *float64    `json:"volume_mm3"`
+	AreaMM2      *float64    `json:"area_mm2"`
+	Watertight   *bool       `json:"watertight"`
 }
 
 var ErrBadCursor = errors.New("invalid cursor")
@@ -329,8 +393,8 @@ func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string
 
 	rows, err := s.db.Query(ctx, `
 		SELECT f.id, f.source_id, s.name, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
-		       f.content_hash, t.status, t.created_at, t.error,
-		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3
+		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
+		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
 		FROM files f
 		JOIN sources s ON s.id = f.source_id
 		LEFT JOIN thumbnails t ON t.file_id = f.id
@@ -368,8 +432,8 @@ func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
 	var it FileItem
 	var sx, sy, sz *float64
 	err := r.Scan(&it.ID, &it.SourceID, &it.SourceName, &it.RelPath, &it.Dir, &it.Name, &it.Kind,
-		&it.Format, &it.Size, &it.Mtime, &it.ContentHash, &it.ThumbStatus, &it.ThumbAt, &it.ThumbError,
-		&it.Triangles, &sx, &sy, &sz, &it.VolumeMM3)
+		&it.Format, &it.Size, &it.Mtime, &it.ContentHash, &it.ArchiveID, &it.ThumbStatus, &it.ThumbAt, &it.ThumbError,
+		&it.ThumbVersion, &it.Triangles, &sx, &sy, &sz, &it.VolumeMM3, &it.AreaMM2, &it.Watertight)
 	if sx != nil && sy != nil && sz != nil {
 		it.Dimensions = &[3]float64{*sx, *sy, *sz}
 	}
@@ -379,8 +443,8 @@ func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
 func (s *Store) GetFile(ctx context.Context, id int64) (FileItem, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT f.id, f.source_id, s.name, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
-		       f.content_hash, t.status, t.created_at, t.error,
-		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3
+		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
+		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
 		FROM files f
 		JOIN sources s ON s.id = f.source_id
 		LEFT JOIN thumbnails t ON t.file_id = f.id

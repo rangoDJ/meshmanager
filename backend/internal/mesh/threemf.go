@@ -14,6 +14,8 @@ import (
 // A 3MF file is a zip of XML "model" parts. Objects hold a mesh or components that
 // reference other objects, possibly in other parts (Bambu/Orca put meshes in
 // 3D/Objects/*.model via the production extension's p:path). Build items place objects.
+// Slicers add their own metadata for plates, part types and filament colours; see
+// slicer.go.
 
 const maxComponentDepth = 16
 
@@ -66,6 +68,9 @@ type tmfComponent struct {
 }
 
 type tmfObject struct {
+	name       string
+	pid        string
+	pindex     int
 	verts      [][3]float32
 	tris       [][3]int32
 	components []tmfComponent
@@ -74,23 +79,39 @@ type tmfObject struct {
 type tmfPart struct {
 	objects map[string]*tmfObject
 	build   []tmfComponent
+	// colours of basematerials and colorgroups, by property group id
+	materials map[string][]string
 }
 
 type threeMF struct {
-	files map[string]*zip.File
-	parts map[string]*tmfPart
-	mesh  *Mesh
+	files  map[string]*zip.File
+	parts  map[string]*tmfPart
+	slicer *slicerInfo
+	model  *Model
 }
 
-// Read3MF loads every build item of a 3MF, with transforms applied.
+// Read3MF loads the geometry of every build item of a 3MF, with transforms applied.
 func Read3MF(filename string) (*Mesh, error) {
+	m, err := Read3MFModel(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &m.Mesh, nil
+}
+
+// Read3MFModel loads a 3MF with one part per object or volume, plate assignments and
+// colours from the slicer project data when present.
+func Read3MFModel(filename string) (*Model, error) {
 	zr, err := zip.OpenReader(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer zr.Close()
 
-	t := &threeMF{files: zipIndex(&zr.Reader), parts: map[string]*tmfPart{}, mesh: &Mesh{}}
+	files := zipIndex(&zr.Reader)
+	t := &threeMF{files: files, parts: map[string]*tmfPart{}, slicer: readSlicerInfo(files), model: &Model{}}
+	t.model.Plates = t.slicer.plates
+
 	root := t.rootPart()
 	rp, err := t.part(root)
 	if err != nil {
@@ -102,12 +123,17 @@ func Read3MF(filename string) (*Mesh, error) {
 			rp.build = append(rp.build, tmfComponent{objectID: id, part: root, xf: identity})
 		}
 	}
+	instances := map[string]int{}
 	for _, item := range rp.build {
-		if err := t.emit(item.part, item.objectID, item.xf, 0); err != nil {
+		inst := instances[item.objectID]
+		instances[item.objectID]++
+		plate := t.slicer.plateOf[instanceKey{item.objectID, inst}]
+		if err := t.emit(item.part, item.objectID, item.xf, plate, item.objectID, 0); err != nil {
 			return nil, err
 		}
 	}
-	return t.mesh, nil
+	t.model.finish()
+	return t.model, nil
 }
 
 func zipIndex(zr *zip.Reader) map[string]*zip.File {
@@ -149,11 +175,13 @@ func normPart(p string) string {
 	return strings.ToLower(strings.TrimPrefix(path.Clean("/"+p), "/"))
 }
 
-func (t *threeMF) emit(part, objectID string, xf affine, depth int) error {
+// emit adds an object (and its components) to the model. root is the id of the
+// build-level object, which slicer metadata is keyed by.
+func (t *threeMF) emit(partFile, objectID string, xf affine, plate int, root string, depth int) error {
 	if depth > maxComponentDepth {
 		return errors.New("3MF components nested too deeply")
 	}
-	p, err := t.part(part)
+	p, err := t.part(partFile)
 	if err != nil {
 		return err
 	}
@@ -161,7 +189,42 @@ func (t *threeMF) emit(part, objectID string, xf affine, depth int) error {
 	if obj == nil {
 		return nil
 	}
-	for _, tri := range obj.tris {
+
+	if len(obj.tris) > 0 {
+		if vols := t.slicer.prusaVolumes[objectID]; depth == 0 && len(vols) > 0 {
+			// PrusaSlicer: one object, split into volumes by triangle range.
+			for _, v := range vols {
+				if !v.modelPart {
+					continue
+				}
+				name := firstNonEmpty(v.name, obj.name, "Object "+objectID)
+				t.model.beginPart(name, plate, t.slicer.color(v.extruder))
+				last := min(v.last, len(obj.tris)-1)
+				if err := t.addTris(obj, obj.tris[min(v.first, last+1):last+1], xf); err != nil {
+					return err
+				}
+			}
+		} else if name, extruder, skip := t.slicer.describe(root, objectID, obj.name); !skip {
+			color := t.slicer.color(extruder)
+			if color == "" {
+				color = p.materialColor(obj)
+			}
+			t.model.beginPart(firstNonEmpty(name, "Object "+objectID), plate, color)
+			if err := t.addTris(obj, obj.tris, xf); err != nil {
+				return err
+			}
+		}
+	}
+	for _, c := range obj.components {
+		if err := t.emit(c.part, c.objectID, c.xf.then(xf), plate, root, depth+1); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *threeMF) addTris(obj *tmfObject, tris [][3]int32, xf affine) error {
+	for _, tri := range tris {
 		var v [3][3]float32
 		for k, i := range tri {
 			if int(i) >= len(obj.verts) || i < 0 {
@@ -171,16 +234,28 @@ func (t *threeMF) emit(part, objectID string, xf affine, depth int) error {
 			x, y, z := xf.apply(float64(src[0]), float64(src[1]), float64(src[2]))
 			v[k] = [3]float32{float32(x), float32(y), float32(z)}
 		}
-		if err := t.mesh.addTri(v[0], v[1], v[2]); err != nil {
-			return err
-		}
-	}
-	for _, c := range obj.components {
-		if err := t.emit(c.part, c.objectID, c.xf.then(xf), depth+1); err != nil {
+		if err := t.model.addTri(v[0], v[1], v[2]); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (p *tmfPart) materialColor(obj *tmfObject) string {
+	colors := p.materials[obj.pid]
+	if obj.pindex >= 0 && obj.pindex < len(colors) {
+		return colors[obj.pindex]
+	}
+	return ""
+}
+
+func firstNonEmpty(s ...string) string {
+	for _, v := range s {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func (t *threeMF) part(name string) (*tmfPart, error) {
@@ -210,11 +285,12 @@ var unitScale = map[string]float64{
 
 // parseModelPart streams a model XML part. Vertex coordinates are converted to mm.
 func parseModelPart(r io.Reader, name string) (*tmfPart, error) {
-	p := &tmfPart{objects: map[string]*tmfObject{}}
+	p := &tmfPart{objects: map[string]*tmfObject{}, materials: map[string][]string{}}
 	dec := xml.NewDecoder(r)
 	scale := 1.0
 	var cur *tmfObject
 	inBuild := false
+	group := "" // current basematerials/colorgroup id
 	vertexCount := 0
 
 	for {
@@ -233,8 +309,23 @@ func parseModelPart(r io.Reader, name string) (*tmfPart, error) {
 				if s, ok := unitScale[a["unit"]]; ok {
 					scale = s
 				}
+			case "basematerials", "colorgroup":
+				group = a["id"]
+			case "base":
+				if group != "" {
+					p.materials[group] = append(p.materials[group], normColor(a["displaycolor"]))
+				}
+			case "color":
+				if group != "" {
+					p.materials[group] = append(p.materials[group], normColor(a["color"]))
+				}
 			case "object":
-				cur = &tmfObject{}
+				cur = &tmfObject{name: a["name"], pid: a["pid"], pindex: -1}
+				if v, err := strconv.Atoi(a["pindex"]); err == nil {
+					cur.pindex = v
+				} else if a["pid"] != "" {
+					cur.pindex = 0
+				}
 				p.objects[a["id"]] = cur
 			case "vertex":
 				if cur == nil {
@@ -288,6 +379,8 @@ func parseModelPart(r io.Reader, name string) (*tmfPart, error) {
 				cur = nil
 			case "build":
 				inBuild = false
+			case "basematerials", "colorgroup":
+				group = ""
 			}
 		}
 	}
@@ -322,19 +415,27 @@ func ThreeMFThumbnail(filename string) ([]byte, error) {
 	candidates = append(candidates, "metadata/thumbnail.png")
 
 	for _, name := range candidates {
-		f := files[name]
-		if f == nil || f.UncompressedSize64 == 0 || f.UncompressedSize64 > 20<<20 {
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			continue
-		}
-		b, err := io.ReadAll(rc)
-		rc.Close()
-		if err == nil {
+		b := readZipFile(files[name], 20<<20)
+		if b != nil {
 			return b, nil
 		}
 	}
 	return nil, nil
+}
+
+// readZipFile returns a member's content, or nil if it's missing, empty or too big.
+func readZipFile(f *zip.File, limit uint64) []byte {
+	if f == nil || f.UncompressedSize64 == 0 || f.UncompressedSize64 > limit {
+		return nil
+	}
+	rc, err := f.Open()
+	if err != nil {
+		return nil
+	}
+	defer rc.Close()
+	b, err := io.ReadAll(rc)
+	if err != nil {
+		return nil
+	}
+	return b
 }

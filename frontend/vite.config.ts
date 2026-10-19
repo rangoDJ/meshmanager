@@ -9,5 +9,6 @@ export default defineConfig({
     // In development the Go server runs on :8080 and serves only the API.
     proxy: { "/api": "http://localhost:8080" },
   },
-  build: { outDir: "dist", emptyOutDir: true },
+  // The 3D viewer chunk (three.js) is ~570 kB and only loads when a model is opened.
+  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 700 },
 });
