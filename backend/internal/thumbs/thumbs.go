@@ -64,12 +64,14 @@ func Generate(path, format string, size int) (Result, error) {
 			return Result{}, err
 		}
 		return Result{Image: img, Origin: OriginImage, ContentType: "image/png"}, nil
-	case "gcode", "fcstd", "lbrn":
+	case "gcode", "gcode3mf", "fcstd", "lbrn":
 		var img image.Image
 		var err error
 		switch format {
 		case "gcode":
 			img, err = gcodePreview(path)
+		case "gcode3mf":
+			img, err = gcode3mfPreview(path)
 		case "fcstd":
 			img, err = freecadPreview(path)
 		default:

@@ -86,13 +86,21 @@ var byExt = map[string]Format{
 	".gcode":  {"gcode", GCode, true},
 	".gco":    {"gcode", GCode, true},
 	".bgcode": {"bgcode", GCode, false},
+
+	// Bambu Studio / OrcaSlicer plate exports: a 3MF holding Metadata/plate_N.gcode
+	".gcode.3mf": {GCode3MF, GCode, true},
 }
+
+// GCode3MF is the format name of sliced `.gcode.3mf` files.
+const GCode3MF = "gcode3mf"
 
 // Detect returns the format for a file name, or false if the library doesn't index it.
 func Detect(name string) (Format, bool) {
 	lower := strings.ToLower(name)
-	if strings.HasSuffix(lower, ".tar.gz") {
-		return byExt[".tar.gz"], true
+	for _, double := range []string{".tar.gz", ".gcode.3mf"} {
+		if strings.HasSuffix(lower, double) {
+			return byExt[double], true
+		}
 	}
 	f, ok := byExt[path.Ext(lower)]
 	return f, ok

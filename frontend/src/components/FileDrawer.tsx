@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import { useFile } from "../api/library";
 import { formatBytes, formatDate, formatDims, formatNumber } from "../lib/format";
+import { hasToolpath } from "../viewer/toolpath";
 import { CopyLocation } from "./CopyLocation";
 import { FileOrganize } from "./FileOrganize";
 import { Thumbnail } from "./Thumbnail";
@@ -24,7 +25,7 @@ export function FileDrawer({
   onView: (id: number) => void;
 }) {
   const { data: f } = useFile(id);
-  const open = f && (f.viewable ? "3d" : f.format === "gcode" ? "gcode" : f.inline ? "file" : null);
+  const open = f && (f.viewable ? "3d" : hasToolpath(f.format) ? "gcode" : f.inline ? "file" : null);
   const browsable = f && f.kind === "archive" && f.archive_id === null && !laterRarPart.test(f.name);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { type FileFilters, type FileItem, filterBody, useFiles } from "../api/library";
 import { type Selection, useRemoveFromCollection } from "../api/organize";
 import { formatBytes, formatNumber } from "../lib/format";
+import { hasToolpath } from "../viewer/toolpath";
 import { FileDrawer } from "./FileDrawer";
 import { SelectionBar } from "./SelectionBar";
 import { Thumbnail } from "./Thumbnail";
@@ -16,7 +17,7 @@ const FilePreview = lazy(() => import("../viewer/FilePreview"));
 
 /** Files that open in a viewer rather than only downloading. */
 export function previewable(f: Pick<FileItem, "viewable" | "inline" | "format">) {
-  return f.viewable || f.inline || f.format === "gcode";
+  return f.viewable || f.inline || hasToolpath(f.format);
 }
 
 /** The open viewer lives in the URL (?view=<id>), so back and reload work. */

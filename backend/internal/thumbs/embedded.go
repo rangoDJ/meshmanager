@@ -10,6 +10,7 @@ import (
 	"image/draw"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -70,6 +71,39 @@ func gcodePreview(path string) (image.Image, error) {
 		return nil, errNoPreview
 	}
 	return best, nil
+}
+
+var platePNGRe = regexp.MustCompile(`(?i)^metadata/plate_(\d+)\.png$`)
+
+// gcode3mfPreview returns the render Bambu Studio / OrcaSlicer save for the first
+// sliced plate of a .gcode.3mf (Metadata/plate_1.png).
+func gcode3mfPreview(path string) (image.Image, error) {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+	var best *zip.File
+	bestN := 0
+	for _, f := range zr.File {
+		m := platePNGRe.FindStringSubmatch(f.Name)
+		if m == nil || f.UncompressedSize64 > 20<<20 {
+			continue
+		}
+		if n, _ := strconv.Atoi(m[1]); best == nil || n < bestN {
+			best, bestN = f, n
+		}
+	}
+	if best == nil {
+		return nil, errNoPreview
+	}
+	rc, err := best.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	img, _, err := image.Decode(rc)
+	return img, err
 }
 
 // freecadPreview returns the thumbnail FreeCAD saves inside an .FCStd (a ZIP).

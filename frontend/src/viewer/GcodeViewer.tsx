@@ -35,6 +35,9 @@ export default function GcodeViewer({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Sliced plates of a .gcode.3mf. Plate 0 asks for the first one.
+  const [plates, setPlates] = useState<number[]>([]);
+  const [plate, setPlate] = useState(0);
   const [layer, setLayer] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [view, setView] = useState<ViewPreset>("iso");
@@ -61,16 +64,17 @@ export default function GcodeViewer({
     setError(null);
     setProgress(0);
     setPlaying(false);
-    fetchToolpath(file.id, setProgress, ctrl.signal)
+    fetchToolpath(file.id, plate, setProgress, ctrl.signal)
       .then((t) => {
         setTp(t);
+        setPlates(t.header.plates);
         setLayer(t.header.layers.length - 1); // open on the finished print
       })
       .catch((e: Error) => {
         if (!ctrl.signal.aborted) setError(e.message);
       });
     return () => ctrl.abort();
-  }, [file.id]);
+  }, [file.id, plate]);
 
   useEffect(() => {
     if (tp) sceneRef.current?.setToolpath(tp);
@@ -131,7 +135,8 @@ export default function GcodeViewer({
     if (!blob) return;
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${file.name.replace(/\.[^.]+$/, "")}-layer-${layer + 1}.png`;
+    const base = file.name.replace(/\.gcode\.3mf$|\.[^.]+$/i, "");
+    a.download = `${base}${plates.length > 1 ? `-plate-${tp?.header.plate}` : ""}-layer-${layer + 1}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
@@ -169,6 +174,27 @@ export default function GcodeViewer({
               </button>
             ))}
           </div>
+          {plates.length > 1 && (
+            <div
+              role="group"
+              aria-label="Plate"
+              className="flex max-w-full overflow-x-auto rounded-lg border border-border bg-surface/90 text-xs backdrop-blur [scrollbar-width:none]"
+            >
+              {plates.map((n) => {
+                const active = n === (plate || plates[0]);
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setPlate(n)}
+                    aria-pressed={active}
+                    className={`shrink-0 px-2.5 py-1.5 transition-colors ${active ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
+                  >
+                    Plate {n}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex shrink-0 overflow-hidden rounded-lg border border-border bg-surface/90 backdrop-blur">
             <ToolButton active={travels} onClick={() => setTravels(!travels)} label="Travel moves on this layer">
               <Footprints className="size-4" />

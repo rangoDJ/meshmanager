@@ -19,7 +19,15 @@ export type ToolpathHeader = {
   print_seconds: number;
   filament_grams: number;
   filament_mm: number;
+  /** Sliced plates of a .gcode.3mf (empty for plain G-code) and the one these toolpaths are for. */
+  plates: number[];
+  plate: number;
 };
+
+/** Sliced print files that open in the layer preview: plain G-code and Bambu/Orca .gcode.3mf. */
+export function hasToolpath(format: string) {
+  return format === "gcode" || format === "gcode3mf";
+}
 
 export type Toolpath = {
   header: ToolpathHeader;
@@ -47,14 +55,19 @@ export const FEATURE_COLORS: Record<string, string> = {
 /**
  * Downloads a G-code file's toolpath (see backend handleToolpath for the format):
  * "MMT1" | uint32 header length | header JSON | float32 extrusions | float32 travels |
- * uint8 features. onProgress receives 0..1 once the header has arrived.
+ * uint8 features. plate picks a plate of a .gcode.3mf (0: the first). onProgress receives
+ * 0..1 once the header has arrived.
  */
 export async function fetchToolpath(
   id: number,
+  plate: number,
   onProgress: (fraction: number) => void,
   signal: AbortSignal,
 ): Promise<Toolpath> {
-  const res = await fetch(`/api/files/${id}/toolpath`, { credentials: "same-origin", signal });
+  const res = await fetch(`/api/files/${id}/toolpath${plate ? `?plate=${plate}` : ""}`, {
+    credentials: "same-origin",
+    signal,
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Could not load the G-code (${res.status})`);

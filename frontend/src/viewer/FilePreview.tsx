@@ -7,10 +7,11 @@ import type { FileNavigation } from "./chrome";
 import FileViewer from "./FileViewer";
 import GcodeViewer from "./GcodeViewer";
 import ModelViewer from "./ModelViewer";
+import { hasToolpath } from "./toolpath";
 
 /** Files that open in one of the viewers rather than only downloading. */
 export function previewable(f: Pick<FileItem, "viewable" | "inline" | "format">) {
-  return f.viewable || f.inline || f.format === "gcode";
+  return f.viewable || f.inline || hasToolpath(f.format);
 }
 
 /**
@@ -73,6 +74,6 @@ export default function FilePreview({
     );
   }
   if (file.viewable) return <ModelViewer key={file.id} fileId={file.id} nav={nav} onClose={onClose} />;
-  if (file.format === "gcode") return <GcodeViewer key={file.id} file={file} nav={nav} onClose={onClose} />;
+  if (hasToolpath(file.format)) return <GcodeViewer key={file.id} file={file} nav={nav} onClose={onClose} />;
   return <FileViewer key={file.id} file={file} nav={nav} onClose={onClose} />;
 }
