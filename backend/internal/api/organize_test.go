@@ -21,8 +21,8 @@ import (
 
 // organizeEnv is a small scanned library plus a signed-in client.
 type organizeEnv struct {
-	t      *testing.T
-	c      *client
+	t       *testing.T
+	c       *client
 	lib     string
 	srcID   any
 	sid     string
@@ -146,7 +146,7 @@ func TestTagsAndTagFilters(t *testing.T) {
 	e.ok("POST", "/api/bulk/tags", map[string]any{"ids": []int64{knight}, "remove_ids": []int64{painted}})
 	q := func(parts ...string) string { return strings.Join(parts, "&") }
 	fid, pid := fmt.Sprint(fantasy), fmt.Sprint(painted)
-	if got := e.sortedNames(q("tag="+fid)); got != "dragon.stl,knight.stl" {
+	if got := e.sortedNames(q("tag=" + fid)); got != "dragon.stl,knight.stl" {
 		t.Errorf("one tag: %s", got)
 	}
 	if got := e.sortedNames(q("tag="+fid, "tag="+pid)); got != "dragon.stl" {
