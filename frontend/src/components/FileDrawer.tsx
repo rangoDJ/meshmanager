@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { useFile } from "../api/library";
 import { formatBytes, formatDate, formatDims, formatNumber } from "../lib/format";
 import { CopyLocation } from "./CopyLocation";
+import { FileOrganize } from "./FileOrganize";
 import { Thumbnail } from "./Thumbnail";
 
 // Parts 2+ of a split RAR set list nothing themselves; part 1 holds the contents.
@@ -138,6 +139,10 @@ export function FileDrawer({
                 </Fact>
               )}
             </dl>
+
+            <div className="border-t border-border pt-5">
+              <FileOrganize file={f} />
+            </div>
           </div>
         )}
       </aside>

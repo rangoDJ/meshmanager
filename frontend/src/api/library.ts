@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "./client";
+import type { CollectionRef, FileMeta, Photo, QueueRef, TagRef } from "./organize";
 import type { Job } from "./types";
 
 export type ThumbnailMode = "lazy" | "eager";
@@ -54,6 +55,16 @@ export type FileItem = {
   inline: boolean;
   /** The file's location on the host or network, when its source has one set. */
   host_path: string | null;
+  tags: TagRef[];
+  /** True when the thumbnail is a photo someone chose. */
+  custom_thumb: boolean;
+  /** Indexed once, but no longer on disk. Only seen on queue entries. */
+  missing: boolean;
+  // Only on a single file, not in listings:
+  meta?: FileMeta;
+  collections?: CollectionRef[];
+  queue?: QueueRef[];
+  photos?: Photo[];
 };
 
 export type FileList = { items: FileItem[]; next_cursor: string | null; total?: number };
@@ -73,6 +84,15 @@ export type FileFilters = {
   formats: string[];
   q: string;
   sort: string;
+  /** Files must carry all of these tags, or any of them with tagAny. */
+  tags?: number[];
+  tagAny?: boolean;
+  /** ...and none of these. */
+  notTags?: number[];
+  /** A collection and everything nested in it. */
+  collection?: number;
+  /** Only files that are in no collection. */
+  unfiled?: boolean;
 };
 
 function filterParams(f: FileFilters) {
@@ -83,7 +103,28 @@ function filterParams(f: FileFilters) {
   f.formats.forEach((k) => p.append("format", k));
   if (f.q.trim()) p.set("q", f.q.trim());
   if (f.sort) p.set("sort", f.sort);
+  f.tags?.forEach((t) => p.append("tag", String(t)));
+  if (f.tagAny) p.set("tags", "any");
+  f.notTags?.forEach((t) => p.append("notag", String(t)));
+  if (f.collection) p.set("collection", String(f.collection));
+  if (f.unfiled) p.set("unfiled", "1");
   return p;
+}
+
+/** The same filter as a request body, for acting on every matching file. */
+export function filterBody(f: FileFilters) {
+  return {
+    source: f.source,
+    dir: f.source ? f.dir : undefined,
+    kinds: f.kinds.length ? f.kinds : undefined,
+    formats: f.formats.length ? f.formats : undefined,
+    q: f.q.trim() || undefined,
+    tags: f.tags?.length ? f.tags : undefined,
+    tag_any: f.tagAny || undefined,
+    not_tags: f.notTags?.length ? f.notTags : undefined,
+    collection: f.collection,
+    unfiled: f.unfiled || undefined,
+  };
 }
 
 const scanActive = (s: Source) =>

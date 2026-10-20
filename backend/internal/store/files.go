@@ -260,18 +260,6 @@ func (s *Store) CarryArchiveMembers(ctx context.Context, sourceID, gen int64) er
 
 // --- listing -----------------------------------------------------------------
 
-type FileFilter struct {
-	SourceID int64
-	// Dir limits results to a folder and its subfolders; requires SourceID. Empty means all.
-	Dir     string
-	Kinds   []string
-	Formats []string
-	Query   string
-	Sort    string // "name", "-mtime" (default), "-size"
-	Cursor  string
-	Limit   int
-}
-
 type FileItem struct {
 	ID             int64       `json:"id"`
 	SourceID       int64       `json:"source_id"`
@@ -295,6 +283,12 @@ type FileItem struct {
 	VolumeMM3      *float64    `json:"volume_mm3"`
 	AreaMM2        *float64    `json:"area_mm2"`
 	Watertight     *bool       `json:"watertight"`
+	Tags           []TagRef    `json:"tags"`
+	// A photo chosen as the file's thumbnail replaces the generated one.
+	CoverPhotoID *int64     `json:"-"`
+	CoverAt      *time.Time `json:"-"`
+	// Missing is true for a file that was indexed but is no longer on disk.
+	Missing bool `json:"missing"`
 }
 
 var ErrBadCursor = errors.New("invalid cursor")
@@ -319,49 +313,29 @@ func decodeCursor(s string) (cursor, error) {
 	return c, nil
 }
 
-type queryBuilder struct {
-	where []string
-	args  []any
-}
+const fileColumns = `
+	f.id, f.source_id, s.name, s.host_path, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
+	f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
+	m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight,
+	coalesce((SELECT json_agg(json_build_object('id', tg.id, 'name', tg.name, 'color', tg.color, 'pinned', tg.pinned)
+	                          ORDER BY tg.pinned DESC, lower(tg.name))
+	          FROM file_tags ft JOIN tags tg ON tg.id = ft.tag_id WHERE ft.file_id = f.id), '[]'::json),
+	cp.id, cp.created_at, f.status = 'missing'`
 
-func (q *queryBuilder) arg(v any) string {
-	q.args = append(q.args, v)
-	return fmt.Sprintf("$%d", len(q.args))
-}
+// fileJoinsRest is everything a file listing joins to files f.
+const fileJoinsRest = `
+	JOIN sources s ON s.id = f.source_id
+	LEFT JOIN thumbnails t ON t.file_id = f.id
+	LEFT JOIN model_info m ON m.file_id = f.id
+	LEFT JOIN file_photos cp ON cp.file_id = f.id AND cp.is_cover`
 
-func (q *queryBuilder) add(cond string) { q.where = append(q.where, cond) }
-
-func (q *queryBuilder) sql() string { return strings.Join(q.where, " AND ") }
-
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
-}
-
-// filters builds the WHERE clause shared by listing, counting and facets.
-func (f FileFilter) filters(withKinds bool) *queryBuilder {
-	q := &queryBuilder{}
-	q.add("f.status = 'present'")
-	if f.SourceID > 0 {
-		q.add("f.source_id = " + q.arg(f.SourceID))
-		if f.Dir != "" {
-			q.add(fmt.Sprintf("(f.dir = %s OR f.dir LIKE %s)", q.arg(f.Dir), q.arg(escapeLike(f.Dir)+"/%")))
-		}
-	}
-	if withKinds {
-		if len(f.Kinds) > 0 {
-			q.add("f.kind = ANY(" + q.arg(f.Kinds) + ")")
-		}
-		if len(f.Formats) > 0 {
-			q.add("f.format = ANY(" + q.arg(f.Formats) + ")")
-		}
-	}
-	for _, term := range strings.Fields(f.Query) {
-		q.add("f.rel_path ILIKE " + q.arg("%"+escapeLike(term)+"%"))
-	}
-	return q
-}
+const fileJoins = "\n\tFROM files f" + fileJoinsRest
 
 func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string, error) {
+	f, err := s.resolve(ctx, f)
+	if err != nil {
+		return nil, "", err
+	}
 	q := f.filters(true)
 
 	var order, keyExpr, cmp string
@@ -395,14 +369,7 @@ func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string
 		limit = 100
 	}
 
-	rows, err := s.db.Query(ctx, `
-		SELECT f.id, f.source_id, s.name, s.host_path, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
-		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
-		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
-		FROM files f
-		JOIN sources s ON s.id = f.source_id
-		LEFT JOIN thumbnails t ON t.file_id = f.id
-		LEFT JOIN model_info m ON m.file_id = f.id
+	rows, err := s.db.Query(ctx, "SELECT "+fileColumns+fileJoins+`
 		WHERE `+q.sql()+`
 		ORDER BY `+order+`
 		LIMIT `+q.arg(limit+1), q.args...)
@@ -432,12 +399,19 @@ func (s *Store) ListFiles(ctx context.Context, f FileFilter) ([]FileItem, string
 	return items, next, nil
 }
 
-func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
+func scanFileItem(r pgx.CollectableRow) (FileItem, error) { return scanFileItemWith(r) }
+
+// scanFileItemWith scans a row of fileColumns, after any leading columns of the caller's own.
+func scanFileItemWith(r interface{ Scan(...any) error }, lead ...any) (FileItem, error) {
 	var it FileItem
 	var sx, sy, sz *float64
-	err := r.Scan(&it.ID, &it.SourceID, &it.SourceName, &it.SourceHostPath, &it.RelPath, &it.Dir, &it.Name, &it.Kind,
+	err := r.Scan(append(lead, &it.ID, &it.SourceID, &it.SourceName, &it.SourceHostPath, &it.RelPath, &it.Dir, &it.Name, &it.Kind,
 		&it.Format, &it.Size, &it.Mtime, &it.ContentHash, &it.ArchiveID, &it.ThumbStatus, &it.ThumbAt, &it.ThumbError,
-		&it.ThumbVersion, &it.Triangles, &sx, &sy, &sz, &it.VolumeMM3, &it.AreaMM2, &it.Watertight)
+		&it.ThumbVersion, &it.Triangles, &sx, &sy, &sz, &it.VolumeMM3, &it.AreaMM2, &it.Watertight,
+		&it.Tags, &it.CoverPhotoID, &it.CoverAt, &it.Missing)...)
+	if it.Tags == nil {
+		it.Tags = []TagRef{}
+	}
 	if sx != nil && sy != nil && sz != nil {
 		it.Dimensions = &[3]float64{*sx, *sy, *sz}
 	}
@@ -445,15 +419,7 @@ func scanFileItem(r pgx.CollectableRow) (FileItem, error) {
 }
 
 func (s *Store) GetFile(ctx context.Context, id int64) (FileItem, error) {
-	rows, err := s.db.Query(ctx, `
-		SELECT f.id, f.source_id, s.name, s.host_path, f.rel_path, f.dir, f.name, f.kind, f.format, f.size, f.mtime,
-		       f.content_hash, f.archive_id, t.status, t.created_at, t.error, t.renderer_version,
-		       m.triangles, m.size_x, m.size_y, m.size_z, m.volume_mm3, m.area_mm2, m.watertight
-		FROM files f
-		JOIN sources s ON s.id = f.source_id
-		LEFT JOIN thumbnails t ON t.file_id = f.id
-		LEFT JOIN model_info m ON m.file_id = f.id
-		WHERE f.id = $1`, id)
+	rows, err := s.db.Query(ctx, "SELECT "+fileColumns+fileJoins+" WHERE f.id = $1", id)
 	if err != nil {
 		return FileItem{}, err
 	}
@@ -462,9 +428,13 @@ func (s *Store) GetFile(ctx context.Context, id int64) (FileItem, error) {
 }
 
 func (s *Store) CountFiles(ctx context.Context, f FileFilter) (int64, error) {
+	f, err := s.resolve(ctx, f)
+	if err != nil {
+		return 0, err
+	}
 	q := f.filters(true)
 	var n int64
-	err := s.db.QueryRow(ctx, "SELECT count(*) FROM files f WHERE "+q.sql(), q.args...).Scan(&n)
+	err = s.db.QueryRow(ctx, "SELECT count(*) FROM files f WHERE "+q.sql(), q.args...).Scan(&n)
 	return n, err
 }
 
@@ -476,6 +446,10 @@ type Facet struct {
 
 // Facets counts files by kind and format, ignoring the kind and format filters.
 func (s *Store) Facets(ctx context.Context, f FileFilter) ([]Facet, error) {
+	f, err := s.resolve(ctx, f)
+	if err != nil {
+		return nil, err
+	}
 	q := f.filters(false)
 	rows, err := s.db.Query(ctx, `
 		SELECT f.kind, f.format, count(*) FROM files f WHERE `+q.sql()+`
@@ -500,4 +474,30 @@ func (s *Store) DirCounts(ctx context.Context, sourceID int64, kinds []string) (
 		return nil, err
 	}
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[DirCount])
+}
+
+// FilesByIDs returns the given files in the order of ids; missing ones are left out.
+func (s *Store) FilesByIDs(ctx context.Context, ids []int64) ([]FileItem, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(ctx, "SELECT "+fileColumns+fileJoins+" WHERE f.id = ANY($1)", ids)
+	if err != nil {
+		return nil, err
+	}
+	items, err := pgx.CollectRows(rows, scanFileItem)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[int64]FileItem, len(items))
+	for _, it := range items {
+		byID[it.ID] = it
+	}
+	out := make([]FileItem, 0, len(items))
+	for _, id := range ids {
+		if it, ok := byID[id]; ok {
+			out = append(out, it)
+		}
+	}
+	return out, nil
 }

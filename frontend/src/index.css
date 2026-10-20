@@ -12,6 +12,18 @@
   --danger: #dc2626;
   --success: #15803d;
   --warning: #b45309;
+
+  /* Tag colours belong to the user's content, like thumbnails; see DESIGN.md. */
+  --tag-slate: #64748b;
+  --tag-red: #dc2626;
+  --tag-orange: #ea580c;
+  --tag-amber: #d97706;
+  --tag-green: #16a34a;
+  --tag-teal: #0d9488;
+  --tag-blue: #2563eb;
+  --tag-indigo: #4f46e5;
+  --tag-violet: #7c3aed;
+  --tag-pink: #db2777;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +39,17 @@
     --danger: #f87171;
     --success: #4ade80;
     --warning: #fbbf24;
+
+    --tag-slate: #94a3b8;
+    --tag-red: #f87171;
+    --tag-orange: #fb923c;
+    --tag-amber: #fbbf24;
+    --tag-green: #4ade80;
+    --tag-teal: #2dd4bf;
+    --tag-blue: #60a5fa;
+    --tag-indigo: #818cf8;
+    --tag-violet: #a78bfa;
+    --tag-pink: #f472b6;
   }
 }
 
@@ -72,4 +95,17 @@ body {
   writing-mode: vertical-lr;
   direction: rtl;
   width: 1.25rem;
+}
+
+/* A printed list is always black on white, whatever the screen's theme. */
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f4f4f5;
+    --border: #d4d4d8;
+    --fg: #000000;
+    --muted: #52525b;
+  }
 }

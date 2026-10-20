@@ -46,11 +46,15 @@ type Result struct {
 	Hashed     int
 	HashErrors int
 	WalkErrors int
+	Moved      int // renamed or moved files whose tags, notes and the rest were carried over
 }
 
 func (r Result) Summary() string {
 	s := fmt.Sprintf("%d files indexed, %d new or changed, %d missing, %d hashed",
 		r.Files, r.Changed, r.Missing, r.Hashed)
+	if r.Moved > 0 {
+		s += fmt.Sprintf(", %d moved", r.Moved)
+	}
 	if r.WalkErrors+r.HashErrors > 0 {
 		s += fmt.Sprintf(", %d unreadable", r.WalkErrors+r.HashErrors)
 	}
@@ -172,7 +176,16 @@ func (s *Scanner) Scan(ctx context.Context, src store.Source, progress ProgressF
 
 	hashed, failed, err := s.hashAll(ctx, src, progress)
 	res.Hashed, res.HashErrors = hashed, failed
-	return res, err
+	if err != nil {
+		return res, err
+	}
+
+	// Hashes are in: files that were renamed or moved can now be told apart from new ones.
+	progress(1, "Following renamed files…")
+	if res.Moved, err = s.Store.ReconcileMoves(ctx); err != nil {
+		return res, err
+	}
+	return res, nil
 }
 
 // expandArchives indexes the supported files inside new or changed archives, as if

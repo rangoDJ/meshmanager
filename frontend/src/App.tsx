@@ -2,13 +2,16 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { useAuthStatus } from "./api/hooks";
 import { AppShell } from "./components/AppShell";
 import { FullPageMessage, Spinner } from "./components/ui";
+import { CollectionsPage } from "./pages/CollectionsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { QueuePage } from "./pages/QueuePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SetupPage } from "./pages/SetupPage";
 import { SourcesPage } from "./pages/SourcesPage";
+import { TagsPage } from "./pages/TagsPage";
 
 export default function App() {
   return (
@@ -32,26 +35,9 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="collections"
-            element={
-              <PlaceholderPage
-                title="Collections"
-                milestone={5}
-                text="Group models across folders without moving them."
-              />
-            }
-          />
-          <Route
-            path="queue"
-            element={
-              <PlaceholderPage
-                title="Print queue"
-                milestone={5}
-                text="Lists for each print run, with printed/failed status and PDF or CSV export."
-              />
-            }
-          />
+          <Route path="collections" element={<CollectionsPage />} />
+          <Route path="tags" element={<TagsPage />} />
+          <Route path="queue" element={<QueuePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

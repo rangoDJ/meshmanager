@@ -2,7 +2,7 @@
 
 A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It indexes the folders where your models already live, renders thumbnails, and lets you search, preview and deduplicate them. It never moves or modifies your files.
 
-> **Status: milestone 3.** The library is in place: sources, a background scanner with BLAKE3 hashing, thumbnails, and a searchable grid with a folder tree. On top of that:
+> **Status: milestone 6** (milestones 4 and 5, duplicates and scanning controls, are still to come). The library is in place: sources, a background scanner with BLAKE3 hashing, thumbnails, and a searchable grid with a folder tree. On top of that:
 >
 > - **3D viewer:** camera presets, orthographic view, wireframe, screenshots, and an info panel with size, volume, a watertight check and an estimated print weight.
 > - **Slicer projects:** Bambu Studio/OrcaSlicer plates and filament colours; PrusaSlicer volumes. Modifier and support parts are hidden.
@@ -11,6 +11,13 @@ A self-hosted library for your 3D print files (STL, 3MF, OBJ, STEP and more). It
 > - **G-code layer preview:** step through a sliced print layer by layer, with lines coloured by type (walls, infill, support…), travel moves, layer height, and the slicer's print time and filament.
 > - **More previews:** thumbnails from SVGs, glTF, and the previews slicers, FreeCAD and LightBurn save inside their files.
 > - **Copy location:** give a source its network location (such as `\\nas\downloads`) and any file's real path is one click away.
+> - **Tags:** your own labels, with a colour each. Pin a tag to show its dot on every tile; filter by several (all or any of them, or rule one out); the search box finds tag names too.
+> - **Notes and source:** per file, notes plus where it came from (link, designer, licence), saved as you type.
+> - **Collections:** nested, and either filled by hand or smart (a saved filter that files new models itself). "Not in a collection" shows what is still loose. Files never move.
+> - **Photos and covers:** attach pictures of the finished print, use one as a model's thumbnail, and choose the cover for a folder. Folders show as cards above the grid.
+> - **Print queue:** lists, grouped by printer, with a To print / Printing / Done board, quantities and notes, a CSV download and a printable sheet (use the browser's Save as PDF).
+> - **Select many:** tag, file or queue a whole selection, or everything a filter matches, in one go.
+> - **Renames are followed:** tags, notes, collections, queue entries and photos stay with a file that was renamed or moved on disk, after the next scan.
 >
 > Duplicates come next. See [PLAN.md](PLAN.md).
 

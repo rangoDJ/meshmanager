@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  Tags,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -20,6 +21,7 @@ const nav = [
   { to: "/sources", label: "Sources", icon: HardDrive },
   { to: "/duplicates", label: "Duplicates", icon: Copy },
   { to: "/collections", label: "Collections", icon: FolderHeart },
+  { to: "/tags", label: "Tags", icon: Tags },
   { to: "/queue", label: "Print queue", icon: ListTodo },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -28,8 +30,9 @@ export function AppShell() {
   const [open, setOpen] = useState(false);
   const { data } = useAuthStatus();
   const logout = useLogout();
-  // The library grid uses the full width; other pages read better narrower.
-  const wide = useLocation().pathname.startsWith("/library");
+  // Pages built around a grid or a board use the full width; the rest read better narrower.
+  const path = useLocation().pathname;
+  const wide = ["/library", "/collections", "/queue"].some((p) => path.startsWith(p));
 
   return (
     <div className="flex min-h-full">
@@ -37,7 +40,7 @@ export function AppShell() {
         <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border bg-surface transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border bg-surface transition-transform print:hidden md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -89,13 +92,13 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b border-border bg-surface px-4 md:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-border bg-surface px-4 md:hidden print:hidden">
           <button onClick={() => setOpen(true)} className="rounded p-1 text-muted" aria-label="Open menu">
             <Menu className="size-5" />
           </button>
           <span className="font-semibold">MeshManager</span>
         </header>
-        <main className={`mx-auto w-full flex-1 p-4 md:p-6 ${wide ? "" : "max-w-5xl md:p-8"}`}>
+        <main className={`mx-auto w-full flex-1 p-4 md:p-6 print:p-0 ${wide ? "" : "max-w-5xl md:p-8"}`}>
           <Outlet />
         </main>
       </div>

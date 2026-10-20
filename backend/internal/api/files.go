@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -30,6 +31,18 @@ type fileView struct {
 	Inline bool `json:"inline"`
 	// HostPath is the file's location on the host, when the source has a host path set.
 	HostPath *string `json:"host_path"`
+	// CustomThumb is true when the thumbnail is a photo the user chose.
+	CustomThumb bool `json:"custom_thumb"`
+	// Detail is only present when a single file is fetched.
+	*fileDetail
+}
+
+// fileDetail is what the file panel shows beyond what the grid needs.
+type fileDetail struct {
+	Meta        store.FileMeta        `json:"meta"`
+	Collections []store.CollectionRef `json:"collections"`
+	Queue       []store.QueueRef      `json:"queue"`
+	Photos      []photoView           `json:"photos"`
 }
 
 func toView(it store.FileItem) fileView {
@@ -42,6 +55,11 @@ func toView(it store.FileItem) fileView {
 	// A thumbnail from an older renderer counts as not rendered yet.
 	current := it.ThumbVersion != nil && *it.ThumbVersion == thumbs.Version
 	switch {
+	case it.CoverPhotoID != nil && it.CoverAt != nil:
+		// A photo the user chose stands in for the generated thumbnail.
+		v.Thumb, v.CustomThumb = "ready", true
+		u := photoURL(*it.CoverPhotoID, true) + "&v=" + strconv.FormatInt(it.CoverAt.UnixMilli(), 10)
+		v.ThumbURL = &u
 	case current && it.ThumbStatus != nil && *it.ThumbStatus == store.ThumbReady:
 		v.Thumb = "ready"
 		u := base + "?v=" + strconv.FormatInt(it.ThumbAt.UnixMilli(), 10)
@@ -77,6 +95,20 @@ func fileFilterFrom(r *http.Request) (store.FileFilter, string) {
 	if f.Dir != "" && f.SourceID == 0 {
 		return f, "dir requires source"
 	}
+	var err error
+	if f.Tags, err = parseIDs(q["tag"]); err != nil {
+		return f, "tag must be a number"
+	}
+	if f.NotTags, err = parseIDs(q["notag"]); err != nil {
+		return f, "notag must be a number"
+	}
+	f.TagAny = q.Get("tags") == "any"
+	if v := q.Get("collection"); v != "" {
+		if f.Collection, err = strconv.ParseInt(v, 10, 64); err != nil || f.Collection < 1 {
+			return f, "collection must be a number"
+		}
+	}
+	f.Unfiled = q.Get("unfiled") == "1"
 	if v := q.Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > 500 {
@@ -103,6 +135,10 @@ func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	items, next, err := s.store.ListFiles(r.Context(), f)
 	if errors.Is(err, store.ErrBadCursor) {
 		writeError(w, http.StatusBadRequest, "invalid cursor")
+		return
+	}
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "collection not found")
 		return
 	}
 	if err != nil {
@@ -155,7 +191,38 @@ func (s *Server) handleGetFile(w http.ResponseWriter, r *http.Request) {
 		internalError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toView(it))
+	v := toView(it)
+	d, err := s.loadDetail(r.Context(), id)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	v.fileDetail = d
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (s *Server) loadDetail(ctx context.Context, id int64) (*fileDetail, error) {
+	meta, err := s.store.GetFileMeta(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	cols, err := s.store.FileCollections(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	queue, err := s.store.FileQueue(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	photos, err := s.store.ListPhotos(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	d := &fileDetail{Meta: meta, Collections: cols, Queue: queue, Photos: make([]photoView, len(photos))}
+	for i, p := range photos {
+		d.Photos[i] = toPhotoView(p)
+	}
+	return d, nil
 }
 
 // handleThumbnail serves a ready thumbnail. A missing one is queued at high priority

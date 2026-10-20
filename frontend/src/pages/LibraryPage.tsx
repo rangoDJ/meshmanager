@@ -1,22 +1,13 @@
 import { FolderTree, Search, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { VirtuosoGrid } from "react-virtuoso";
-import { type FileFilters, type FileItem, useFacets, useFiles, useSources } from "../api/library";
-import { FileDrawer } from "../components/FileDrawer";
+import { type FileFilters, useFacets, useFiles, useSources } from "../api/library";
+import { FileResults } from "../components/FileResults";
 import { FolderPanel } from "../components/FolderPanel";
-import { Thumbnail } from "../components/Thumbnail";
-import { ErrorText, Spinner } from "../components/ui";
-import { formatBytes, formatNumber } from "../lib/format";
+import { ActiveFilters, FolderCards, TagFilter, type TagState } from "../components/LibraryFilters";
+import { Button, Spinner } from "../components/ui";
+import { formatNumber } from "../lib/format";
 import { useDebounced, useStoredState } from "../lib/hooks";
-
-// The viewers pull in three.js; load them only when a file is opened.
-const FilePreview = lazy(() => import("../viewer/FilePreview"));
-
-/** Files that open in a viewer rather than only downloading. */
-function previewable(f: Pick<FileItem, "viewable" | "inline" | "format">) {
-  return f.viewable || f.inline || f.format === "gcode";
-}
 
 const kindLabels: Record<string, string> = {
   model: "Models",
@@ -40,10 +31,15 @@ function useFilters() {
     formats: params.getAll("format"),
     q: params.get("q") ?? "",
     sort: params.get("sort") ?? "-mtime",
+    tags: params.getAll("tag").map(Number).filter(Boolean),
+    notTags: params.getAll("notag").map(Number).filter(Boolean),
+    tagAny: params.get("tags") === "any",
+    unfiled: params.get("unfiled") === "1",
   };
 
   function update(patch: Partial<FileFilters>, replace = false) {
     const next = { ...filters, ...patch };
+    // The viewer and details ride along in the URL; leave them be when filters change.
     const p = new URLSearchParams();
     if (next.source) p.set("source", String(next.source));
     if (next.source && next.dir) p.set("dir", next.dir);
@@ -52,36 +48,20 @@ function useFilters() {
     next.formats.forEach((f) => p.append("format", f));
     if (next.q) p.set("q", next.q);
     if (next.sort !== "-mtime") p.set("sort", next.sort);
+    next.tags?.forEach((t) => p.append("tag", String(t)));
+    next.notTags?.forEach((t) => p.append("notag", String(t)));
+    if (next.tagAny && (next.tags?.length ?? 0) > 1) p.set("tags", "any");
+    if (next.unfiled) p.set("unfiled", "1");
     setParams(p, { replace });
   }
   return [filters, update] as const;
 }
 
-/** The open viewer lives in the URL (?view=<id>), so back and reload work. */
-function useViewerParam() {
-  const [params, setParams] = useSearchParams();
-  const id = Number(params.get("view")) || null;
-  // Stepping between files replaces the entry, so Back closes the viewer in one press.
-  const set = (next: number | null, stepping = false) =>
-    setParams(
-      (p) => {
-        const n = new URLSearchParams(p);
-        if (next) n.set("view", String(next));
-        else n.delete("view");
-        return n;
-      },
-      { replace: next === null || stepping },
-    );
-  return [id, set] as const;
-}
-
 export function LibraryPage() {
   const [filters, setFilters] = useFilters();
-  const [viewing, setViewing] = useViewerParam();
   const [search, setSearch] = useState(filters.q);
   const debounced = useDebounced(search, 250);
   const [tile, setTile] = useStoredState("mm.tileSize", 180);
-  const [selected, setSelected] = useState<number | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(false);
 
   useEffect(() => {
@@ -90,10 +70,8 @@ export function LibraryPage() {
   }, [debounced]);
 
   const sources = useSources();
-  const files = useFiles(filters);
   const facets = useFacets(filters);
-  const items = useMemo(() => files.data?.pages.flatMap((p) => p.items) ?? [], [files.data]);
-  const total = files.data?.pages[0]?.total;
+  const matching = useFiles(filters).data?.pages[0]?.total;
 
   const kindCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -106,6 +84,13 @@ export function LibraryPage() {
     [facets.data, filters.kinds],
   );
 
+  if (sources.isPending) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner />
+      </div>
+    );
+  }
   if (sources.data?.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-xl border border-dashed border-border px-6 py-20 text-center">
@@ -119,28 +104,62 @@ export function LibraryPage() {
   }
 
   const currentSource = sources.data?.find((s) => s.id === filters.source);
-  const folderPanel = sources.data && (
-    <FolderPanel
-      sources={sources.data}
-      sourceId={filters.source}
-      dir={filters.dir ?? ""}
-      kinds={filters.kinds}
-      onSelect={(source, dir) => {
-        setFilters({ source, dir });
-        setFoldersOpen(false);
-      }}
-    />
+  const tagState: TagState = {
+    tags: filters.tags ?? [],
+    notTags: filters.notTags ?? [],
+    tagAny: !!filters.tagAny,
+    unfiled: !!filters.unfiled,
+  };
+  const tagFiltered = tagState.tags.length + tagState.notTags.length > 0 || tagState.unfiled;
+  const panels = (
+    <div className="space-y-5">
+      {sources.data && (
+        <FolderPanel
+          sources={sources.data}
+          sourceId={filters.source}
+          dir={filters.dir ?? ""}
+          kinds={filters.kinds}
+          onSelect={(source, dir) => {
+            setFilters({ source, dir });
+            setFoldersOpen(false);
+          }}
+        />
+      )}
+      <div className="border-t border-border pt-4">
+        <TagFilter value={tagState} onChange={(patch) => setFilters(patch)} />
+      </div>
+    </div>
   );
 
   return (
     <div className="flex gap-6">
       <aside className="hidden w-60 shrink-0 lg:block">
-        <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto pr-1">{folderPanel}</div>
+        <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto pr-1">{panels}</div>
       </aside>
       {foldersOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setFoldersOpen(false)}>
-          <div className="h-full w-72 overflow-y-auto bg-surface p-3" onClick={(e) => e.stopPropagation()}>
-            {folderPanel}
+          <div
+            role="dialog"
+            aria-label="Folders and tags"
+            className="flex h-full w-72 flex-col bg-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border py-1.5 pr-1.5 pl-3">
+              <h2 className="text-sm font-medium">Folders and tags</h2>
+              <button
+                onClick={() => setFoldersOpen(false)}
+                aria-label="Close"
+                className="grid size-10 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">{panels}</div>
+            <div className="border-t border-border p-3">
+              <Button className="h-11 w-full" onClick={() => setFoldersOpen(false)}>
+                {matching === undefined ? "Show files" : `Show ${formatNumber(matching)} ${matching === 1 ? "file" : "files"}`}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -149,10 +168,11 @@ export function LibraryPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFoldersOpen(true)}
-            className="rounded-lg border border-border bg-surface p-2 text-muted lg:hidden"
-            aria-label="Folders"
+            className="relative grid size-10 place-items-center rounded-lg border border-border bg-surface text-muted lg:hidden"
+            aria-label={tagFiltered ? "Folders and tags (filtering by tags)" : "Folders and tags"}
           >
             <FolderTree className="size-4" />
+            {tagFiltered && <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-full bg-accent" />}
           </button>
           <div className="relative min-w-48 flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
@@ -160,7 +180,7 @@ export function LibraryPage() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search names and folders…"
+              placeholder="Search names, folders and tags…"
               aria-label="Search"
               className="w-full rounded-lg border border-border bg-surface py-2 pr-8 pl-9 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
             />
@@ -234,91 +254,36 @@ export function LibraryPage() {
           </div>
         )}
 
-        <p className="text-sm text-muted">
-          {total !== undefined ? `${formatNumber(total)} ${total === 1 ? "file" : "files"}` : " "}
-          {currentSource && (
+        <FileResults
+          filters={filters}
+          tile={tile}
+          scope={
+            currentSource && (
+              <>
+                {" in "}
+                <span className="text-fg">
+                  {currentSource.name}
+                  {filters.dir ? ` / ${filters.dir}` : ""}
+                </span>
+              </>
+            )
+          }
+          lead={
             <>
-              {" in "}
-              <span className="text-fg">
-                {currentSource.name}
-                {filters.dir ? ` / ${filters.dir}` : ""}
-              </span>
-            </>
-          )}
-        </p>
-
-        <ErrorText>{files.error?.message}</ErrorText>
-        {files.isPending ? (
-          <Spinner />
-        ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center text-sm text-muted">
-            No files match these filters.
-          </div>
-        ) : (
-          <div style={{ "--tile": `${tile}px` } as React.CSSProperties}>
-            <VirtuosoGrid
-              useWindowScroll
-              data={items}
-              increaseViewportBy={600}
-              listClassName="grid gap-3 grid-cols-[repeat(auto-fill,minmax(var(--tile),1fr))]"
-              endReached={() => files.hasNextPage && !files.isFetchingNextPage && files.fetchNextPage()}
-              itemContent={(_, file) => (
-                <Tile
-                  file={file}
-                  onOpen={() => setSelected(file.id)}
-                  onView={previewable(file) ? () => setViewing(file.id) : undefined}
+              <ActiveFilters value={tagState} onChange={(patch) => setFilters(patch)} />
+              {filters.source && !filters.q && !tagFiltered && (
+                <FolderCards
+                  sourceId={filters.source}
+                  dir={filters.dir ?? ""}
+                  kinds={filters.kinds}
+                  onOpen={(path) => setFilters({ dir: path })}
                 />
               )}
-            />
-            {files.isFetchingNextPage && (
-              <div className="flex justify-center py-6">
-                <Spinner />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {selected !== null && (
-        <FileDrawer id={selected} onClose={() => setSelected(null)} onView={(id) => setViewing(id)} />
-      )}
-      {viewing !== null && (
-        <Suspense
-          fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg">
-              <Spinner />
-            </div>
+            </>
           }
-        >
-          <FilePreview fileId={viewing} onOpen={(id) => setViewing(id, true)} onClose={() => setViewing(null)} />
-        </Suspense>
-      )}
-    </div>
-  );
-}
-
-function Tile({ file, onOpen, onView }: { file: FileItem; onOpen: () => void; onView?: () => void }) {
-  return (
-    <button
-      onClick={onOpen}
-      onDoubleClick={onView}
-      className="group block w-full text-left"
-      title={onView ? `${file.rel_path}
-Double-click to open` : file.rel_path}
-    >
-      <div className="aspect-square overflow-hidden rounded-xl border border-border bg-surface p-2 transition group-hover:border-accent/60 group-focus-visible:ring-2 group-focus-visible:ring-accent">
-        <Thumbnail file={file} className="transition group-hover:scale-[1.03]" />
+        />
       </div>
-      <p className="mt-1.5 truncate text-sm">{file.name}</p>
-      <p className="truncate text-xs text-muted">
-        <span className="uppercase">{file.format}</span> · {formatBytes(file.size)}
-        {file.archive_id !== null && (
-          <span className="ml-1.5 rounded bg-surface-2 px-1 py-px text-[10px] font-medium" title="Inside an archive">
-            ZIP
-          </span>
-        )}
-      </p>
-    </button>
+    </div>
   );
 }
 

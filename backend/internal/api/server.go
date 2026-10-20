@@ -93,6 +93,41 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/files/{id}/content", s.requireAuth(s.handleContent))
 	mux.Handle("GET /api/files/{id}/image-info", s.requireAuth(s.handleImageInfo))
 	mux.Handle("GET /api/files/{id}/toolpath", s.requireAuth(s.handleToolpath))
+	mux.Handle("PATCH /api/files/{id}/meta", s.requireAuth(s.handleUpdateMeta))
+	mux.Handle("POST /api/files/{id}/photos", s.requireAuth(s.handleUploadPhoto))
+
+	mux.Handle("GET /api/photos/{id}/image", s.requireAuth(s.handleGetPhoto))
+	mux.Handle("PATCH /api/photos/{id}", s.requireAuth(s.handleUpdatePhoto))
+	mux.Handle("DELETE /api/photos/{id}", s.requireAuth(s.handleDeletePhoto))
+
+	mux.Handle("GET /api/sources/{id}/folders", s.requireAuth(s.handleListFolders))
+	mux.Handle("PUT /api/sources/{id}/folder-cover", s.requireAuth(s.handleSetFolderCover))
+	mux.Handle("DELETE /api/sources/{id}/folder-cover", s.requireAuth(s.handleClearFolderCover))
+
+	mux.Handle("GET /api/tags", s.requireAuth(s.handleListTags))
+	mux.Handle("POST /api/tags", s.requireAuth(s.handleCreateTag))
+	mux.Handle("PATCH /api/tags/{id}", s.requireAuth(s.handleUpdateTag))
+	mux.Handle("DELETE /api/tags/{id}", s.requireAuth(s.handleDeleteTag))
+	mux.Handle("POST /api/tags/{id}/merge", s.requireAuth(s.handleMergeTag))
+	mux.Handle("POST /api/bulk/tags", s.requireAuth(s.handleBulkTags))
+
+	mux.Handle("GET /api/collections", s.requireAuth(s.handleListCollections))
+	mux.Handle("POST /api/collections", s.requireAuth(s.handleCreateCollection))
+	mux.Handle("PATCH /api/collections/{id}", s.requireAuth(s.handleUpdateCollection))
+	mux.Handle("DELETE /api/collections/{id}", s.requireAuth(s.handleDeleteCollection))
+	mux.Handle("POST /api/collections/{id}/files", s.requireAuth(s.handleAddToCollection))
+	mux.Handle("POST /api/collections/{id}/files/remove", s.requireAuth(s.handleRemoveFromCollection))
+
+	mux.Handle("GET /api/print-lists", s.requireAuth(s.handleListPrintLists))
+	mux.Handle("POST /api/print-lists", s.requireAuth(s.handleCreatePrintList))
+	mux.Handle("PATCH /api/print-lists/{id}", s.requireAuth(s.handleUpdatePrintList))
+	mux.Handle("DELETE /api/print-lists/{id}", s.requireAuth(s.handleDeletePrintList))
+	mux.Handle("GET /api/print-lists/{id}/items", s.requireAuth(s.handleListPrintItems))
+	mux.Handle("POST /api/print-lists/{id}/items", s.requireAuth(s.handleAddPrintItems))
+	mux.Handle("POST /api/print-lists/{id}/clear-done", s.requireAuth(s.handleClearDonePrintItems))
+	mux.Handle("GET /api/print-lists/{id}/export.csv", s.requireAuth(s.handleExportPrintList))
+	mux.Handle("PATCH /api/print-items/{id}", s.requireAuth(s.handleUpdatePrintItem))
+	mux.Handle("DELETE /api/print-items/{id}", s.requireAuth(s.handleDeletePrintItem))
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")

@@ -166,7 +166,7 @@ function SourceCard({ source: s }: { source: Source }) {
                 Cancel
               </Button>
               <Button
-                className="bg-danger text-white"
+                className="bg-danger text-accent-fg"
                 loading={remove.isPending}
                 onClick={() => remove.mutate(s.id, { onSuccess: () => setConfirming(false) })}
               >

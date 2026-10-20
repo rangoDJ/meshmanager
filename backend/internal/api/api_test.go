@@ -158,7 +158,7 @@ func newServer(t *testing.T) (string, *store.Store) {
 func newServerWithConfig(t *testing.T, cfg config.Config) (string, *store.Store) {
 	t.Helper()
 	_, err := testPool.Exec(context.Background(),
-		"TRUNCATE users, auth_sessions, jobs, workers, sources, river_job RESTART IDENTITY CASCADE")
+		"TRUNCATE users, auth_sessions, jobs, workers, sources, river_job, tags, collections, print_lists RESTART IDENTITY CASCADE")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -235,7 +235,13 @@ func (s *Server) handleDeleteSource(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	err := s.store.InTx(r.Context(), func(q *store.Store, tx pgx.Tx) error {
+	// Photos attached to the source's files go with it; collect them before the rows vanish.
+	photoFiles, err := s.store.PhotoPathsForSource(r.Context(), id)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	err = s.store.InTx(r.Context(), func(q *store.Store, tx pgx.Tx) error {
 		if err := q.DeleteSource(r.Context(), id); err != nil {
 			return err
 		}
@@ -250,6 +256,7 @@ func (s *Server) handleDeleteSource(w http.ResponseWriter, r *http.Request) {
 		internalError(w, r, err)
 		return
 	}
+	s.removeStored(photoFiles...)
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-19T19:43:38+00:00",
+  "generatedAt": "2026-10-20T13:29:23+00:00",
   "title": "Design System: MeshManager",
   "extensions": {
     "colorMeta": {
@@ -311,6 +311,286 @@
           "oklch(85% 0.16 85)",
           "oklch(95% 0.16 85)"
         ]
+      },
+      "tag-slate": {
+        "role": "content",
+        "displayName": "Tag Slate",
+        "tonalRamp": [
+          "oklch(15% 0.03 255)",
+          "oklch(27% 0.03 255)",
+          "oklch(39% 0.03 255)",
+          "oklch(51% 0.03 255)",
+          "oklch(63% 0.03 255)",
+          "oklch(75% 0.03 255)",
+          "oklch(85% 0.03 255)",
+          "oklch(95% 0.03 255)"
+        ]
+      },
+      "tag-slate-dark": {
+        "role": "content",
+        "displayName": "Tag Slate (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.03 255)",
+          "oklch(27% 0.03 255)",
+          "oklch(39% 0.03 255)",
+          "oklch(51% 0.03 255)",
+          "oklch(63% 0.03 255)",
+          "oklch(75% 0.03 255)",
+          "oklch(85% 0.03 255)",
+          "oklch(95% 0.03 255)"
+        ]
+      },
+      "tag-red": {
+        "role": "content",
+        "displayName": "Tag Red",
+        "tonalRamp": [
+          "oklch(15% 0.2 27)",
+          "oklch(27% 0.2 27)",
+          "oklch(39% 0.2 27)",
+          "oklch(51% 0.2 27)",
+          "oklch(63% 0.2 27)",
+          "oklch(75% 0.2 27)",
+          "oklch(85% 0.2 27)",
+          "oklch(95% 0.2 27)"
+        ]
+      },
+      "tag-red-dark": {
+        "role": "content",
+        "displayName": "Tag Red (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.2 27)",
+          "oklch(27% 0.2 27)",
+          "oklch(39% 0.2 27)",
+          "oklch(51% 0.2 27)",
+          "oklch(63% 0.2 27)",
+          "oklch(75% 0.2 27)",
+          "oklch(85% 0.2 27)",
+          "oklch(95% 0.2 27)"
+        ]
+      },
+      "tag-orange": {
+        "role": "content",
+        "displayName": "Tag Orange",
+        "tonalRamp": [
+          "oklch(15% 0.19 50)",
+          "oklch(27% 0.19 50)",
+          "oklch(39% 0.19 50)",
+          "oklch(51% 0.19 50)",
+          "oklch(63% 0.19 50)",
+          "oklch(75% 0.19 50)",
+          "oklch(85% 0.19 50)",
+          "oklch(95% 0.19 50)"
+        ]
+      },
+      "tag-orange-dark": {
+        "role": "content",
+        "displayName": "Tag Orange (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.19 50)",
+          "oklch(27% 0.19 50)",
+          "oklch(39% 0.19 50)",
+          "oklch(51% 0.19 50)",
+          "oklch(63% 0.19 50)",
+          "oklch(75% 0.19 50)",
+          "oklch(85% 0.19 50)",
+          "oklch(95% 0.19 50)"
+        ]
+      },
+      "tag-amber": {
+        "role": "content",
+        "displayName": "Tag Amber",
+        "tonalRamp": [
+          "oklch(15% 0.17 70)",
+          "oklch(27% 0.17 70)",
+          "oklch(39% 0.17 70)",
+          "oklch(51% 0.17 70)",
+          "oklch(63% 0.17 70)",
+          "oklch(75% 0.17 70)",
+          "oklch(85% 0.17 70)",
+          "oklch(95% 0.17 70)"
+        ]
+      },
+      "tag-amber-dark": {
+        "role": "content",
+        "displayName": "Tag Amber (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.17 70)",
+          "oklch(27% 0.17 70)",
+          "oklch(39% 0.17 70)",
+          "oklch(51% 0.17 70)",
+          "oklch(63% 0.17 70)",
+          "oklch(75% 0.17 70)",
+          "oklch(85% 0.17 70)",
+          "oklch(95% 0.17 70)"
+        ]
+      },
+      "tag-green": {
+        "role": "content",
+        "displayName": "Tag Green",
+        "tonalRamp": [
+          "oklch(15% 0.17 150)",
+          "oklch(27% 0.17 150)",
+          "oklch(39% 0.17 150)",
+          "oklch(51% 0.17 150)",
+          "oklch(63% 0.17 150)",
+          "oklch(75% 0.17 150)",
+          "oklch(85% 0.17 150)",
+          "oklch(95% 0.17 150)"
+        ]
+      },
+      "tag-green-dark": {
+        "role": "content",
+        "displayName": "Tag Green (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.17 150)",
+          "oklch(27% 0.17 150)",
+          "oklch(39% 0.17 150)",
+          "oklch(51% 0.17 150)",
+          "oklch(63% 0.17 150)",
+          "oklch(75% 0.17 150)",
+          "oklch(85% 0.17 150)",
+          "oklch(95% 0.17 150)"
+        ]
+      },
+      "tag-teal": {
+        "role": "content",
+        "displayName": "Tag Teal",
+        "tonalRamp": [
+          "oklch(15% 0.12 180)",
+          "oklch(27% 0.12 180)",
+          "oklch(39% 0.12 180)",
+          "oklch(51% 0.12 180)",
+          "oklch(63% 0.12 180)",
+          "oklch(75% 0.12 180)",
+          "oklch(85% 0.12 180)",
+          "oklch(95% 0.12 180)"
+        ]
+      },
+      "tag-teal-dark": {
+        "role": "content",
+        "displayName": "Tag Teal (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.12 180)",
+          "oklch(27% 0.12 180)",
+          "oklch(39% 0.12 180)",
+          "oklch(51% 0.12 180)",
+          "oklch(63% 0.12 180)",
+          "oklch(75% 0.12 180)",
+          "oklch(85% 0.12 180)",
+          "oklch(95% 0.12 180)"
+        ]
+      },
+      "tag-blue": {
+        "role": "content",
+        "displayName": "Tag Blue",
+        "tonalRamp": [
+          "oklch(15% 0.19 260)",
+          "oklch(27% 0.19 260)",
+          "oklch(39% 0.19 260)",
+          "oklch(51% 0.19 260)",
+          "oklch(63% 0.19 260)",
+          "oklch(75% 0.19 260)",
+          "oklch(85% 0.19 260)",
+          "oklch(95% 0.19 260)"
+        ]
+      },
+      "tag-blue-dark": {
+        "role": "content",
+        "displayName": "Tag Blue (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.19 260)",
+          "oklch(27% 0.19 260)",
+          "oklch(39% 0.19 260)",
+          "oklch(51% 0.19 260)",
+          "oklch(63% 0.19 260)",
+          "oklch(75% 0.19 260)",
+          "oklch(85% 0.19 260)",
+          "oklch(95% 0.19 260)"
+        ]
+      },
+      "tag-indigo": {
+        "role": "content",
+        "displayName": "Tag Indigo",
+        "tonalRamp": [
+          "oklch(15% 0.2 277)",
+          "oklch(27% 0.2 277)",
+          "oklch(39% 0.2 277)",
+          "oklch(51% 0.2 277)",
+          "oklch(63% 0.2 277)",
+          "oklch(75% 0.2 277)",
+          "oklch(85% 0.2 277)",
+          "oklch(95% 0.2 277)"
+        ]
+      },
+      "tag-indigo-dark": {
+        "role": "content",
+        "displayName": "Tag Indigo (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.2 277)",
+          "oklch(27% 0.2 277)",
+          "oklch(39% 0.2 277)",
+          "oklch(51% 0.2 277)",
+          "oklch(63% 0.2 277)",
+          "oklch(75% 0.2 277)",
+          "oklch(85% 0.2 277)",
+          "oklch(95% 0.2 277)"
+        ]
+      },
+      "tag-violet": {
+        "role": "content",
+        "displayName": "Tag Violet",
+        "tonalRamp": [
+          "oklch(15% 0.2 295)",
+          "oklch(27% 0.2 295)",
+          "oklch(39% 0.2 295)",
+          "oklch(51% 0.2 295)",
+          "oklch(63% 0.2 295)",
+          "oklch(75% 0.2 295)",
+          "oklch(85% 0.2 295)",
+          "oklch(95% 0.2 295)"
+        ]
+      },
+      "tag-violet-dark": {
+        "role": "content",
+        "displayName": "Tag Violet (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.2 295)",
+          "oklch(27% 0.2 295)",
+          "oklch(39% 0.2 295)",
+          "oklch(51% 0.2 295)",
+          "oklch(63% 0.2 295)",
+          "oklch(75% 0.2 295)",
+          "oklch(85% 0.2 295)",
+          "oklch(95% 0.2 295)"
+        ]
+      },
+      "tag-pink": {
+        "role": "content",
+        "displayName": "Tag Pink",
+        "tonalRamp": [
+          "oklch(15% 0.2 350)",
+          "oklch(27% 0.2 350)",
+          "oklch(39% 0.2 350)",
+          "oklch(51% 0.2 350)",
+          "oklch(63% 0.2 350)",
+          "oklch(75% 0.2 350)",
+          "oklch(85% 0.2 350)",
+          "oklch(95% 0.2 350)"
+        ]
+      },
+      "tag-pink-dark": {
+        "role": "content",
+        "displayName": "Tag Pink (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.2 350)",
+          "oklch(27% 0.2 350)",
+          "oklch(39% 0.2 350)",
+          "oklch(51% 0.2 350)",
+          "oklch(63% 0.2 350)",
+          "oklch(75% 0.2 350)",
+          "oklch(85% 0.2 350)",
+          "oklch(95% 0.2 350)"
+        ]
       }
     },
     "typographyMeta": {
@@ -384,6 +664,11 @@
         "name": "pointer-coarse",
         "value": "(pointer: coarse)",
         "purpose": "PDFs open in the browser's reader instead of an iframe."
+      },
+      {
+        "name": "@2xl (container)",
+        "value": "42rem",
+        "purpose": "Print queue board goes from stacked (Printing first) to three columns."
       }
     ],
     "frostedChrome": "border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px)",
@@ -406,6 +691,11 @@
       "Graphite": "#2b2d33",
       "Studio grey": "#8a8f99",
       "Light": "#f2f2f5"
+    },
+    "tagDots": {
+      "dot": "10px",
+      "swatch": "16px",
+      "rule": "Tag colours show only as dots on neutral chips, tiles and rows."
     }
   },
   "components": [
@@ -480,17 +770,42 @@
       "description": "Bottom frosted bar with 40px step buttons around the layer slider (G-code preview on phones).",
       "html": "<div class=\"ds-layerbar\"><p><b>Layer 60</b> of 60 · <b>12.00 mm</b></p><div class=\"ds-layerbar-row\"><button aria-label=\"Play\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M6 3l14 9-14 9z\"/></svg></button><button aria-label=\"Layer down\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m6 9 6 6 6-6\"/></svg></button><input type=\"range\" min=\"1\" max=\"60\" value=\"60\" aria-label=\"Layer\"><button aria-label=\"Layer up\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m18 15-6-6-6 6\"/></svg></button></div></div>",
       "css": ".ds-layerbar{max-width:400px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px);border-radius:12px;padding:6px 6px 4px;color:var(--fg)}.ds-layerbar p{margin:0;padding:0 6px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums}.ds-layerbar-row{display:flex;align-items:center;gap:4px}.ds-layerbar button{width:40px;height:40px;flex-shrink:0;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}.ds-layerbar button:hover{color:var(--fg)}.ds-layerbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ds-layerbar input{flex:1;min-width:0;accent-color:var(--accent)}"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "tag-chip",
+      "description": "Neutral pill with a 10px colour dot; the dot is the only colour.",
+      "html": "<span class=\"ds-tag\"><span class=\"ds-tag-dot\"></span><span>Functional</span><button aria-label=\"Remove tag Functional\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></button></span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9999px;background:var(--surface-2);color:var(--fg);padding:2px 4px 2px 10px;font-size:12px;line-height:16px}.ds-tag-dot{width:10px;height:10px;border-radius:9999px;background:var(--tag-teal);flex-shrink:0}.ds-tag button{display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:9999px;background:transparent;color:var(--muted);cursor:pointer}.ds-tag button:hover{background:var(--border);color:var(--fg)}.ds-tag button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Bulk Selection Bar",
+      "kind": "custom",
+      "refersTo": "selection-bar",
+      "description": "Frosted bar fixed at the bottom of the library while files are selected; labels always visible, 40px targets.",
+      "html": "<div class=\"ds-bulk\"><p><b>3 files</b> selected</p><div><button class=\"is-on\">Tag</button><button>Collection</button><button>Print queue</button></div></div>",
+      "css": ".ds-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;max-width:672px;border:1px solid var(--border);border-radius:12px;background:color-mix(in oklab,var(--surface) 90%,transparent);backdrop-filter:blur(8px);padding:8px 12px;color:var(--fg)}.ds-bulk p{margin:0;font-size:14px;font-variant-numeric:tabular-nums}.ds-bulk div{margin-left:auto;display:flex;gap:6px}.ds-bulk button{height:40px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);padding:0 12px;font-size:14px;font-weight:500;cursor:pointer}.ds-bulk button:hover{background:var(--surface-2)}.ds-bulk button.is-on{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,transparent);color:var(--accent)}.ds-bulk button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
+      "name": "Print Queue Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Board card with note field, secondary advance button (indigo icon) and quantity stepper.",
+      "html": "<div class=\"ds-pq\"><p class=\"ds-pq-name\">bracket_v3.3mf</p><input placeholder=\"Note: filament, settings…\"><div class=\"ds-pq-row\"><button class=\"ds-pq-next\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" style=\"color:var(--accent)\"><path d=\"M6 3l14 9-14 9z\"/></svg> Start printing</button><span>×2</span></div></div>",
+      "css": ".ds-pq{max-width:300px;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px;color:var(--fg);display:flex;flex-direction:column;gap:8px}.ds-pq-name{margin:0;font-size:14px;font-weight:500}.ds-pq input{border:1px solid transparent;border-radius:8px;background:var(--surface-2);padding:6px 10px;font-size:14px;color:var(--fg);outline:none}.ds-pq input:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 25%,transparent)}.ds-pq-row{display:flex;align-items:center;gap:8px}.ds-pq-next{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);font-size:14px;font-weight:500;cursor:pointer}.ds-pq-next:hover{background:var(--surface-2)}.ds-pq-next:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ds-pq-row span{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Workbench",
-    "overview": "MeshManager is a tool laid out on a clean bench: neutral cool-grey surfaces, hairline borders, one indigo accent, and the file itself (a model, a toolpath, a photo, a readme) as the only thing with colour or weight. The chrome stays small, grey and out of the way until it is touched; the content area gets the room.\n\nThe system is flat and tonal. Depth comes from three neutral steps (page, sheet, well) and 1px hairlines, not shadows. It follows the operating system's light or dark preference, and every surface token has a matched dark value, so both modes are first-class. Density is moderate: 14px body text, compact controls on desktop, and 40px step targets plus sideways-scrolling control strips on phones, because the library is used next to the printer as often as at a desk.\n\nViewers share one frame: a full-screen content area with floating translucent controls in the corners, and an information panel that sits on the right on wide screens and drops below the content as a bottom sheet on phones.",
+    "overview": "MeshManager is a tool laid out on a clean bench: neutral cool-grey surfaces, hairline borders, one indigo accent, and the file itself (a model, a toolpath, a photo, a readme) as the only thing with colour or weight. Organizing the library (tags, collections, a print queue) follows the same rule: the controls are neutral, and the user's own labels are the only colour they add, as small dots. The chrome stays small, grey and out of the way until it is touched; the content area gets the room.\n\nThe system is flat and tonal. Depth comes from three neutral steps (page, sheet, well) and 1px hairlines, not shadows. It follows the operating system's light or dark preference, and every surface token has a matched dark value, so both modes are first-class. Density is moderate: 14px body text, compact controls on desktop, and 40px step targets plus sideways-scrolling control strips on phones, because the library is used next to the printer as often as at a desk.\n\nViewers share one frame: a full-screen content area with floating translucent controls in the corners, and an information panel that sits on the right on wide screens and drops below the content as a bottom sheet on phones.",
     "keyCharacteristics": [
       "One accent (indigo) for action, selection and progress; everything else is neutral.",
       "Flat surfaces separated by hairline borders and tonal steps.",
       "Floating viewer controls on translucent, blurred sheets.",
       "System UI typeface throughout; tabular figures for every measurement.",
-      "Light and dark follow the OS, token for token."
+      "Light and dark follow the OS, token for token.",
+      "User-chosen tag colours appear only as small dots on neutral chips, never as tinted chips, text, borders or fills."
     ],
     "rules": [
       {
@@ -500,7 +815,12 @@
       },
       {
         "name": "The Content Owns Colour Rule",
-        "body": "Saturated colour beyond indigo appears only inside the content: the model, the photo, and the G-code toolpath with its line-type legend.",
+        "body": "Saturated colour beyond indigo appears only inside the content: the model, the photo, the G-code toolpath with its line-type legend, and the colours users assign to their own labels (tags), which show as small dots only.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dot-Only Rule",
+        "body": "A tag colour is a 10px dot (16px as a swatch in a picker), never a tinted chip, coloured text, border or fill. A tag chip is always neutral (well fill, hairline border) with the dot inside it.",
         "section": "colors"
       },
       {
@@ -515,7 +835,7 @@
       },
       {
         "name": "The Thumb Reach Rule",
-        "body": "On phones, repeated stepping controls (layer up/down, play) are 40px square and sit in a bottom bar; the desktop equivalent is a vertical rail with compact 28px buttons.",
+        "body": "On phones, repeated stepping controls (layer up/down, play) are 40px square and sit in a bottom bar; bulk-bar buttons, print-card advance buttons and combobox suggestions are 40px tall; the desktop equivalent is a vertical rail with compact 28px buttons.",
         "section": "layout"
       },
       {
@@ -525,7 +845,7 @@
       },
       {
         "name": "The Frosted Chrome Rule",
-        "body": "Controls that float over content are sheet at 90% opacity with backdrop blur and a hairline border.",
+        "body": "Controls that float over content (viewer controls, the selection bar, the pinned-tag pill) are sheet at 90% opacity with backdrop blur and a hairline border.",
         "section": "elevation"
       }
     ],
@@ -534,11 +854,14 @@
       "**Do** float controls over content as frosted chrome: sheet at 90%, backdrop blur, hairline border, 8px radius.",
       "**Do** give phone-only stepping controls 40px square targets, and let overflowing control strips scroll sideways instead of wrapping into a second row of tiny buttons.",
       "**Do** use tabular figures for measurements and counts, and write units in full plain words where space allows (\"42 min\", \"8.6 g\").",
+      "**Do** show a tag's colour only as a dot (10px; 16px in pickers) on a neutral chip, row or tile.",
+      "**Do** keep every bulk and queue control's label visible with a 40px target, and open its panel inline above the bar rather than in a popover.",
       "**Do** move the info panel below the content on phones and to a 320px right column from 1024px."
     ],
     "donts": [
       "**Don't** put shadows on cards, panels or list rows; shadows are for dialogs, the drawer and SVG paper.",
-      "**Don't** introduce a second interface accent; feature colours stay inside the toolpath canvas and its legend.",
+      "**Don't** introduce a second interface accent; feature colours stay inside the toolpath canvas and its legend, and tag colours stay dots.",
+      "**Don't** tint a tag chip, its text, border, row or fill with the tag's colour.",
       "**Don't** cover a browser's own PDF toolbar with viewer controls, and don't embed PDFs on coarse pointers."
     ]
   }
